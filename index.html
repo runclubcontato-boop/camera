@@ -1130,6 +1130,10 @@
       }
     }
 
+    function isFrontCamera() {
+      return facingMode === "user";
+    }
+
     function captureViewfinderFrame(source) {
       const vw = source.videoWidth;
       const vh = source.videoHeight;
@@ -1152,7 +1156,17 @@
 
       rawCanvas.width = sw;
       rawCanvas.height = sh;
-      rawCanvas.getContext("2d").drawImage(source, sx, sy, sw, sh, 0, 0, sw, sh);
+      const ctx = rawCanvas.getContext("2d");
+
+      if (isFrontCamera()) {
+        ctx.save();
+        ctx.translate(sw, 0);
+        ctx.scale(-1, 1);
+        ctx.drawImage(source, sx, sy, sw, sh, 0, 0, sw, sh);
+        ctx.restore();
+      } else {
+        ctx.drawImage(source, sx, sy, sw, sh, 0, 0, sw, sh);
+      }
     }
 
     function renderCaptured() {
