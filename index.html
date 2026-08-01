@@ -459,13 +459,12 @@
     const LIVE_PREVIEW_MAX = 480;
     const CAPTURE_MAX = 960;
     const CAMERA_KEY = "run_camera_ok";
-    const FIRST_PHOTO_KEY = "run_first_photo_done";
     let catAlreadyShown = false;
+    let showCatOnCapture = false;
 
     const catOverlay = new Image();
     catOverlay.src = "gato.png";
     let catOverlayReady = false;
-    let showCatOnCapture = false;
 
     catOverlay.onload = () => { catOverlayReady = true; };
     catOverlay.onerror = () => { catOverlayReady = false; };
@@ -478,27 +477,14 @@
       }
     }
 
-    function initCatState() {
-      try {
-        catAlreadyShown =
-          localStorage.getItem(FIRST_PHOTO_KEY) === "1" ||
-          sessionStorage.getItem(FIRST_PHOTO_KEY) === "1";
-      } catch {
-        catAlreadyShown = false;
-      }
-    }
-
-    function isFirstPhoto() {
+    function shouldShowCatThisSession() {
       return !catAlreadyShown;
     }
 
-    function markFirstPhotoDone() {
-      catAlreadyShown = true;
-      try { sessionStorage.setItem(FIRST_PHOTO_KEY, "1"); } catch {}
-      try { localStorage.setItem(FIRST_PHOTO_KEY, "1"); } catch {}
+    function hideCatSticker() {
+      showCatOnCapture = false;
+      viewfinder.classList.remove("show-cat");
     }
-
-    initCatState();
 
     function drawCatOverlay(ctx, w, h) {
       if (!catOverlayReady || !catOverlay.naturalWidth) return;
@@ -561,6 +547,7 @@
       viewfinderWrap.classList.toggle("captured", captured);
       viewfinder.classList.toggle("captured", captured);
       viewfinder.classList.toggle("show-cat", captured && showCatOnCapture);
+      if (!captured) hideCatSticker();
       document.getElementById("screen-camera").classList.toggle("captured", captured);
       btnCapture.disabled = captured;
       btnRetake.disabled = !captured;
@@ -931,21 +918,26 @@
           g = ((g / 255 - 0.5) * 1.14 + 0.5) * 255;
           b = ((b / 255 - 0.5) * 1.14 + 0.5) * 255;
 
-          const shadow = Math.pow(1 - lum, 2.1);
+          const shadow = Math.pow(1 - lum, 2.0);
           const highlight = Math.pow(lum, 1.7);
 
-          r += (18 - r) * shadow * 0.68;
-          g += (118 - g) * shadow * 0.58;
-          b += (142 - b) * shadow * 0.72;
+          r += (6 - r) * shadow * 0.78;
+          g += (138 - g) * shadow * 0.74;
+          b += (172 - b) * shadow * 0.86;
 
-          r += (255 - r) * highlight * 0.44;
-          g += (132 - g) * highlight * 0.36;
-          b += (48 - b) * highlight * 0.58;
+          r += (255 - r) * highlight * 0.40;
+          g += (128 - g) * highlight * 0.34;
+          b += (40 - b) * highlight * 0.52;
+
+          const midTeal = Math.max(0, 1 - Math.abs(lum - 0.36) * 2.6);
+          r -= 10 * midTeal;
+          g += 12 * midTeal;
+          b += 16 * midTeal;
 
           const skin = Math.max(0, 1 - Math.abs(lum - 0.52) * 2.2);
-          r += 14 * skin;
-          g += 6 * skin;
-          b -= 10 * skin;
+          r += 10 * skin;
+          g += 4 * skin;
+          b -= 6 * skin;
 
           const dx = x - cx;
           const dy = y - cy;
@@ -1243,15 +1235,15 @@
       try {
         viewfinderLabel.textContent = "Capturando...";
         captureViewfinderFrame(video);
-        showCatOnCapture = isFirstPhoto();
-        if (showCatOnCapture) markFirstPhotoDone();
+        showCatOnCapture = shouldShowCatThisSession();
         renderCaptured();
+        if (showCatOnCapture) catAlreadyShown = true;
         capturedIsGif = false;
         setCaptureUI(true);
         viewfinderLabel.textContent = "Capturada";
         stopCamera();
       } catch {
-        showCatOnCapture = false;
+        hideCatSticker();
         setCaptureUI(false);
         viewfinderLabel.textContent = "Ao vivo";
         showToast("Erro ao capturar");
@@ -1262,7 +1254,7 @@
       preview.src = "";
       capturedDataUrl = null;
       capturedIsGif = false;
-      showCatOnCapture = false;
+      hideCatSticker();
       captureMode = "photo";
       revokeCapturedUrl();
       setCaptureUI(false);
@@ -1308,15 +1300,96 @@
       a.click();
     }
 
+    let audioCtx = null;
+
+    function ensureAudio() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      if (audioCtx.state === "suspended") {
+        audioCtx.resume();
+      }
+      return audioCtx;
+    }
+
+    function playClick() {
+      const ctx = ensureAudio();
+      const t = ctx.currentTime;
+      const len = Math.floor(ctx.sampleRate * 0.045);
+      const buffer = ctx.createBuffer(1, len, ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+
+      for (let i = 0; i < len; i++) {
+        data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2.2);
+      }
+
+      const noise = ctx.createBufferSource();
+      noise.buffer = buffer;
+      const filter = ctx.createBiquadFilter();
+      filter.type = "bandpass";
+      filter.frequency.value = 1400;
+      filter.Q.value = 0.8;
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0.22, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.045);
+      noise.connect(filter);
+      filter.connect(gain);
+      gain.connect(ctx.destination);
+      noise.start(t);
+      noise.stop(t + 0.05);
+    }
+
+    function playTap() {
+      const ctx = ensureAudio();
+      const t = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "triangle";
+      osc.frequency.setValueAtTime(960, t);
+      osc.frequency.exponentialRampToValueAtTime(520, t + 0.028);
+      gain.gain.setValueAtTime(0.07, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.035);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(t);
+      osc.stop(t + 0.04);
+    }
+
+    document.addEventListener("pointerdown", () => ensureAudio(), { once: true });
+
     filterBtns.forEach(btn => {
-      btn.addEventListener("click", () => setFilter(btn.dataset.filter));
+      btn.addEventListener("click", () => {
+        if (btn.disabled) return;
+        playTap();
+        setFilter(btn.dataset.filter);
+      });
     });
 
-    btnCapture.addEventListener("click", takePhoto);
-    btnRetake.addEventListener("click", retakePhoto);
-    btnFlip.addEventListener("click", flipCamera);
-    btnVideo.addEventListener("click", toggleCaptureMode);
-    btnSave.addEventListener("click", savePhoto);
+    btnCapture.addEventListener("click", () => {
+      if (btnCapture.disabled) return;
+      playClick();
+      takePhoto();
+    });
+    btnRetake.addEventListener("click", () => {
+      if (btnRetake.disabled) return;
+      playClick();
+      retakePhoto();
+    });
+    btnFlip.addEventListener("click", () => {
+      if (btnFlip.disabled) return;
+      playClick();
+      flipCamera();
+    });
+    btnVideo.addEventListener("click", () => {
+      if (btnVideo.disabled) return;
+      playClick();
+      toggleCaptureMode();
+    });
+    btnSave.addEventListener("click", () => {
+      if (btnSave.disabled) return;
+      playClick();
+      savePhoto();
+    });
 
     syncCameraPermission();
     startCamera();
