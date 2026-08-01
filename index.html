@@ -510,7 +510,7 @@
 
   <div class="app">
     <div class="panel active" id="screen-camera">
-      <p class="camera-intro">Registre momentos com esses efeitos meia boca, salve suas fotos e poste onde vc quiser (ou deixa guardado para o esquecimento...)</p>
+      <p class="camera-intro">Registre momentos com esses efeitos meia boca. Foto e GIF pra postar nas redes (ou deixa guardado no esquecimento).</p>
 
       <div class="camera-stage">
         <div class="stage-main">
@@ -521,7 +521,7 @@
               <img id="preview" alt="Foto capturada">
               <img id="catSticker" class="cat-sticker" src="gato.png" alt="" aria-hidden="true">
               <div class="focus-ring" id="focusRing" aria-hidden="true"></div>
-              <div class="viewfinder-label" id="viewfinderLabel">Ao vivo</div>
+              <div class="viewfinder-label" id="viewfinderLabel">Foto</div>
             </div>
             <div class="brightness-bar">
               <span class="brightness-label">Brilho</span>
@@ -564,7 +564,7 @@
                 <path d="M21 16c-1.6 3.2-5.1 5.2-9 5.2-3.5 0-6.6-1.7-8.4-4.4" stroke="#111" stroke-width="2.2" stroke-linecap="round"/>
               </svg>
             </button>
-            <button class="icon-btn" id="btnGif" aria-label="Modo GIF" aria-pressed="false">
+            <button class="icon-btn" id="btnGif" aria-label="GIF" aria-pressed="false">
               <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                 <rect x="3" y="5" width="18" height="14" rx="2" stroke="#111" stroke-width="2.2"/>
                 <path d="M8 10v4M8 12h2.5a1.5 1.5 0 100-3H8" stroke="#111" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -686,7 +686,7 @@
       btnCapture.setAttribute("aria-label", isGif ? "Gravar GIF" : "Capturar foto");
 
       if (!viewfinder.classList.contains("captured") && !isRecordingGif) {
-        viewfinderLabel.textContent = isGif ? "Modo GIF" : "Ao vivo";
+        viewfinderLabel.textContent = isGif ? "GIF" : "Foto";
       }
     }
 
@@ -2135,7 +2135,7 @@
         showCatOnCapture = false;
         hideCatSticker();
         setCaptureUI(false);
-        viewfinderLabel.textContent = "Ao vivo";
+        viewfinderLabel.textContent = "Foto";
         showToast("Erro ao capturar");
       } finally {
         isCapturing = false;
