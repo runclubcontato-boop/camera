@@ -404,6 +404,10 @@
       animation: pulse-rec 0.75s ease-in-out infinite;
     }
 
+    #screen-camera.gif-mode .shutter:not(.recording):not(:disabled) {
+      background: #b4d4ff;
+    }
+
     .btn-retake {
       display: none;
       font-size: 0.8rem;
@@ -560,6 +564,13 @@
                 <path d="M21 16c-1.6 3.2-5.1 5.2-9 5.2-3.5 0-6.6-1.7-8.4-4.4" stroke="#111" stroke-width="2.2" stroke-linecap="round"/>
               </svg>
             </button>
+            <button class="icon-btn" id="btnGif" aria-label="Modo GIF" aria-pressed="false">
+              <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <rect x="3" y="5" width="18" height="14" rx="2" stroke="#111" stroke-width="2.2"/>
+                <path d="M8 10v4M8 12h2.5a1.5 1.5 0 100-3H8" stroke="#111" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+                <circle cx="16" cy="12" r="2.5" stroke="#111" stroke-width="2.2"/>
+              </svg>
+            </button>
             <button class="shutter" id="btnCapture" type="button" aria-label="Capturar"></button>
             <button class="btn btn-retake" id="btnRetake">Tirar outra</button>
             <button class="icon-btn" id="btnSave" disabled aria-label="Salvar">
@@ -582,6 +593,7 @@
     const btnCapture = document.getElementById("btnCapture");
     const btnRetake = document.getElementById("btnRetake");
     const btnFlip = document.getElementById("btnFlip");
+    const btnGif = document.getElementById("btnGif");
     const btnSave = document.getElementById("btnSave");
     const screenCamera = document.getElementById("screen-camera");
 
@@ -611,12 +623,8 @@
     let capturedIsGif = false;
     let capturedBlobUrl = null;
     let isRecordingGif = false;
-    let shutterHoldTimer = null;
-    let shutterHoldTriggered = false;
-    let shutterIsPressed = false;
-    let shutterPointerId = null;
+    let captureMode = "photo";
     let isCapturing = false;
-    const HOLD_TO_GIF_MS = 500;
     let gifFrames = [];
     let capturedGifRawFrames = [];
     let capturedGifW = 0;
@@ -671,9 +679,21 @@
     }
 
     function updateCaptureModeUI() {
+      const isGif = captureMode === "gif";
+      btnGif.classList.toggle("active", isGif);
+      btnGif.setAttribute("aria-pressed", isGif ? "true" : "false");
+      screenCamera.classList.toggle("gif-mode", isGif);
+      btnCapture.setAttribute("aria-label", isGif ? "Gravar GIF" : "Capturar foto");
+
       if (!viewfinder.classList.contains("captured") && !isRecordingGif) {
-        viewfinderLabel.textContent = "Ao vivo";
+        viewfinderLabel.textContent = isGif ? "Modo GIF" : "Ao vivo";
       }
+    }
+
+    function toggleCaptureMode() {
+      if (viewfinder.classList.contains("captured") || isRecordingGif) return;
+      captureMode = captureMode === "photo" ? "gif" : "photo";
+      updateCaptureModeUI();
     }
 
     function saveCameraPermission() {
@@ -887,12 +907,16 @@
     function setCaptureUI(captured) {
       viewfinderWrap.classList.toggle("captured", captured);
       viewfinder.classList.toggle("captured", captured);
-      viewfinder.classList.toggle("show-cat", captured && showCatOnCapture);
-      if (!captured) hideCatSticker();
-      document.getElementById("screen-camera").classList.toggle("captured", captured);
+      if (captured && showCatOnCapture) {
+        viewfinder.classList.add("show-cat");
+      } else {
+        viewfinder.classList.remove("show-cat");
+      }
+      screenCamera.classList.toggle("captured", captured);
       btnCapture.disabled = captured;
       btnRetake.disabled = !captured;
-      btnFlip.disabled = captured;
+      btnFlip.disabled = captured || isRecordingGif;
+      btnGif.disabled = captured || isRecordingGif;
       btnSave.disabled = !captured;
       if (brightnessSlider) brightnessSlider.disabled = captured || isRecordingGif;
     }
@@ -978,6 +1002,7 @@
       gifOrientation = orientationAngle;
       btnCapture.classList.add("recording");
       btnFlip.disabled = true;
+      btnGif.disabled = true;
       if (brightnessSlider) brightnessSlider.disabled = true;
       viewfinderLabel.textContent = "Gravando...";
 
@@ -1010,16 +1035,17 @@
 
       isRecordingGif = false;
       btnCapture.classList.remove("recording");
-      btnFlip.disabled = false;
-      if (brightnessSlider) brightnessSlider.disabled = viewfinder.classList.contains("captured");
+      const isCaptured = viewfinder.classList.contains("captured");
+      btnFlip.disabled = isCaptured;
+      btnGif.disabled = isCaptured;
+      if (brightnessSlider) brightnessSlider.disabled = isCaptured;
 
       if (!save || gifFrames.length < 2) {
         const tooShort = save && gifFrames.length < 2;
         gifFrames = [];
         updateCaptureModeUI();
         if (tooShort) {
-          viewfinderLabel.textContent = "Ao vivo";
-          showToast("Segure um pouco mais");
+          showToast("Gravação muito curta");
         }
         return;
       }
@@ -2124,6 +2150,7 @@
       capturedGifW = 0;
       capturedGifH = 0;
       showCatOnCapture = false;
+      captureMode = "photo";
       resetBrightness();
       hideCatSticker();
       revokeCapturedUrl();
@@ -2233,41 +2260,25 @@
       a.remove();
     }
 
-    function clearShutterHoldTimer() {
-      if (shutterHoldTimer) {
-        clearTimeout(shutterHoldTimer);
-        shutterHoldTimer = null;
+    function handleShutterClick() {
+      if (btnCapture.disabled || isCapturing) return;
+
+      if (!stream) {
+        showToast("Câmera não está pronta");
+        return;
       }
-    }
 
-    function releaseShutterPointer(pointerId) {
-      try {
-        if (pointerId != null && btnCapture.hasPointerCapture(pointerId)) {
-          btnCapture.releasePointerCapture(pointerId);
-        }
-      } catch {}
-    }
+      playClick();
 
-    function finishShutterPress(e) {
-      if (shutterPointerId != null && e.pointerId !== shutterPointerId) return;
-
-      shutterIsPressed = false;
-      shutterPointerId = null;
-      clearShutterHoldTimer();
-      releaseShutterPointer(e.pointerId);
-
-      if (shutterHoldTriggered || isRecordingGif) {
-        shutterHoldTriggered = false;
+      if (captureMode === "gif") {
         if (isRecordingGif) {
-          playClick();
           stopRecordingGif(true);
+        } else {
+          startRecordingGif();
         }
         return;
       }
 
-      if (btnCapture.disabled || isCapturing) return;
-
-      playClick();
       takePhoto();
     }
 
@@ -2351,38 +2362,15 @@
       updateBrightnessFromSlider();
     });
 
-    btnCapture.addEventListener("pointerdown", (e) => {
-      if (btnCapture.disabled || isRecordingGif || isCapturing) return;
-      if (e.pointerType === "mouse" && e.button !== 0) return;
-
-      e.preventDefault();
+    btnCapture.addEventListener("click", (e) => {
       e.stopPropagation();
-      shutterPointerId = e.pointerId;
-      shutterIsPressed = true;
-      shutterHoldTriggered = false;
-      clearShutterHoldTimer();
-
-      try {
-        btnCapture.setPointerCapture(e.pointerId);
-      } catch {}
-
-      const pointerId = e.pointerId;
-      shutterHoldTimer = setTimeout(() => {
-        shutterHoldTimer = null;
-        if (!shutterIsPressed || shutterPointerId !== pointerId || !stream) return;
-        shutterHoldTriggered = true;
-        playClick();
-        startRecordingGif();
-      }, HOLD_TO_GIF_MS);
+      handleShutterClick();
     });
 
-    btnCapture.addEventListener("pointerup", (e) => {
-      e.stopPropagation();
-      finishShutterPress(e);
-    });
-
-    btnCapture.addEventListener("pointercancel", (e) => {
-      finishShutterPress(e);
+    btnGif.addEventListener("click", () => {
+      if (btnGif.disabled) return;
+      playTap();
+      toggleCaptureMode();
     });
 
     btnRetake.addEventListener("click", () => {
@@ -2402,6 +2390,7 @@
     });
 
     syncCameraPermission();
+    updateCaptureModeUI();
     startCamera();
   </script>
 
