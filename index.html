@@ -230,6 +230,62 @@
       letter-spacing: 0.04em;
     }
 
+    .brightness-bar {
+      display: flex;
+      align-items: center;
+      gap: 0.55rem;
+      padding: 0.5rem 0.65rem;
+      background: var(--cream);
+      border-top: 2px solid var(--black);
+    }
+
+    .brightness-label {
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      flex-shrink: 0;
+      min-width: 2.8rem;
+    }
+
+    .brightness-slider {
+      flex: 1;
+      -webkit-appearance: none;
+      appearance: none;
+      height: 8px;
+      border: 2px solid var(--black);
+      border-radius: 999px;
+      background: linear-gradient(90deg, #888 0%, var(--cream) 50%, #fff 100%);
+      cursor: pointer;
+    }
+
+    .brightness-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 18px;
+      height: 18px;
+      border: 2px solid var(--black);
+      border-radius: 50%;
+      background: var(--cream);
+      box-shadow: 2px 2px 0 0 var(--black);
+    }
+
+    .brightness-slider::-moz-range-thumb {
+      width: 18px;
+      height: 18px;
+      border: 2px solid var(--black);
+      border-radius: 50%;
+      background: var(--cream);
+      box-shadow: 2px 2px 0 0 var(--black);
+    }
+
+    .brightness-slider:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    #screen-camera.captured .brightness-bar {
+      display: none;
+    }
+
     /* Filters */
     .filter-row {
       display: flex;
@@ -463,6 +519,19 @@
               <div class="focus-ring" id="focusRing" aria-hidden="true"></div>
               <div class="viewfinder-label" id="viewfinderLabel">Ao vivo</div>
             </div>
+            <div class="brightness-bar">
+              <span class="brightness-label">Brilho</span>
+              <input
+                class="brightness-slider"
+                id="brightnessSlider"
+                type="range"
+                min="-100"
+                max="100"
+                value="0"
+                step="1"
+                aria-label="Ajustar brilho"
+              >
+            </div>
           </div>
 
           <div class="filter-row">
@@ -526,6 +595,7 @@
     const rawCanvas = document.getElementById("rawCanvas");
     const toast = document.getElementById("toast");
     const focusRing = document.getElementById("focusRing");
+    const brightnessSlider = document.getElementById("brightnessSlider");
     const filterBtns = document.querySelectorAll(".filter-btn");
 
     let stream = null;
@@ -534,7 +604,6 @@
     let capturedOrientation = 0;
     let focusRingTimer = null;
     let exposureBias = 0;
-    let sampleCanvas = null;
     let capturedDataUrl = null;
     let currentFilter = "bw";
     let facingMode = "environment";
@@ -542,8 +611,10 @@
     let capturedBlobUrl = null;
     let isRecordingGif = false;
     let shutterHoldTimer = null;
-    let shutterHoldActive = false;
-    const HOLD_TO_GIF_MS = 300;
+    let shutterHoldTriggered = false;
+    let shutterIsPressed = false;
+    let shutterSuppressClick = false;
+    const HOLD_TO_GIF_MS = 450;
     let gifFrames = [];
     let gifRecordTimer = null;
     let gifencModule = null;
@@ -581,7 +652,6 @@
     }
 
     function hideCatSticker() {
-      showCatOnCapture = false;
       viewfinder.classList.remove("show-cat");
     }
 
@@ -682,48 +752,22 @@
       return { sx: 0, sy: Math.round((vh - sh) / 2), sw, sh };
     }
 
-    function sampleTapBrightness(normX, normY) {
-      captureViewfinderFrame(video);
-      const w = rawCanvas.width;
-      const h = rawCanvas.height;
-      if (!w || !h) return 0.5;
+    function biasFromSlider(value) {
+      return (Number(value) / 100) * 1.2;
+    }
 
-      const cx = normX * w;
-      const cy = normY * h;
-      const patch = Math.max(12, Math.min(w, h) * 0.12);
+    function resetBrightness() {
+      exposureBias = 0;
+      if (brightnessSlider) brightnessSlider.value = "0";
+    }
 
-      if (!sampleCanvas) sampleCanvas = document.createElement("canvas");
-      const size = 8;
-      sampleCanvas.width = size;
-      sampleCanvas.height = size;
-      const ctx = sampleCanvas.getContext("2d", { willReadFrequently: true });
-      ctx.drawImage(
-        rawCanvas,
-        cx - patch / 2,
-        cy - patch / 2,
-        patch,
-        patch,
-        0,
-        0,
-        size,
-        size
-      );
-
-      const data = ctx.getImageData(0, 0, size, size).data;
-      let sum = 0;
-      for (let i = 0; i < data.length; i += 4) {
-        sum += data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114;
+    function updateBrightnessFromSlider() {
+      exposureBias = biasFromSlider(brightnessSlider.value);
+      if (viewfinder.classList.contains("captured")) {
+        renderCaptured();
+      } else {
+        renderLivePreview();
       }
-      return (sum / (data.length / 4)) / 255;
-    }
-
-    function clampExposureBias(value) {
-      return Math.max(-1.5, Math.min(1.5, value));
-    }
-
-    function computeExposureBias(brightness) {
-      const target = 0.4;
-      return clampExposureBias((target - brightness) * 1.9);
     }
 
     function applyExposureBias(ctx, w, h) {
@@ -769,30 +813,9 @@
 
       showFocusRing(clientX, clientY);
 
-      const brightness = sampleTapBrightness(x, y);
-      exposureBias = computeExposureBias(brightness);
-
       const point = { x, y };
       const attempts = [
-        {
-          advanced: [{
-            pointsOfInterest: [point],
-            focusMode: "single-shot",
-            exposureMode: "single-shot"
-          }]
-        },
-        {
-          advanced: [{
-            pointsOfInterest: [point],
-            exposureMode: "single-shot"
-          }]
-        },
-        {
-          advanced: [{
-            pointsOfInterest: [point],
-            focusMode: "single-shot"
-          }]
-        },
+        { advanced: [{ pointsOfInterest: [point], focusMode: "single-shot" }] },
         { advanced: [{ pointsOfInterest: [point] }] },
         { focusMode: "single-shot" },
         { advanced: [{ focusMode: "continuous" }] }
@@ -801,12 +824,9 @@
       for (const constraint of attempts) {
         try {
           await track.applyConstraints(constraint);
-          if (!viewfinder.classList.contains("captured")) renderLivePreview();
           return;
         } catch {}
       }
-
-      if (!viewfinder.classList.contains("captured")) renderLivePreview();
     }
 
     function drawSourceCrop(ctx, source, sx, sy, sw, sh, outW, outH, mirror) {
@@ -873,6 +893,7 @@
       btnRetake.disabled = !captured;
       btnFlip.disabled = captured;
       btnSave.disabled = !captured;
+      if (brightnessSlider) brightnessSlider.disabled = captured || isRecordingGif;
     }
 
     function captureFilteredFrame(maxDim) {
@@ -924,6 +945,7 @@
       gifOrientation = orientationAngle;
       btnCapture.classList.add("recording");
       btnFlip.disabled = true;
+      if (brightnessSlider) brightnessSlider.disabled = true;
       viewfinderLabel.textContent = "Gravando...";
 
       const GIF_FPS = 8;
@@ -953,6 +975,7 @@
       isRecordingGif = false;
       btnCapture.classList.remove("recording");
       btnFlip.disabled = false;
+      if (brightnessSlider) brightnessSlider.disabled = viewfinder.classList.contains("captured");
 
       if (!save || gifFrames.length < 2) {
         const tooShort = save && gifFrames.length < 2;
@@ -1055,7 +1078,7 @@
       try {
         stream = await requestCameraStream();
         videoTrack = stream.getVideoTracks()[0] || null;
-        exposureBias = 0;
+        resetBrightness();
         saveCameraPermission();
         video.srcObject = stream;
         preview.src = "";
@@ -1962,6 +1985,7 @@
         viewfinderLabel.textContent = "Capturada";
         stopCamera();
       } catch {
+        showCatOnCapture = false;
         hideCatSticker();
         setCaptureUI(false);
         viewfinderLabel.textContent = "Ao vivo";
@@ -1973,6 +1997,8 @@
       preview.src = "";
       capturedDataUrl = null;
       capturedIsGif = false;
+      showCatOnCapture = false;
+      resetBrightness();
       hideCatSticker();
       revokeCapturedUrl();
       setCaptureUI(false);
@@ -2076,18 +2102,23 @@
     }
 
     function finishShutterPress(pointerId) {
+      shutterIsPressed = false;
       clearShutterHoldTimer();
 
-      if (pointerId != null && btnCapture.hasPointerCapture(pointerId)) {
-        btnCapture.releasePointerCapture(pointerId);
-      }
+      try {
+        if (pointerId != null && btnCapture.hasPointerCapture(pointerId)) {
+          btnCapture.releasePointerCapture(pointerId);
+        }
+      } catch {}
 
-      if (shutterHoldActive || isRecordingGif) {
-        shutterHoldActive = false;
+      if (shutterHoldTriggered || isRecordingGif) {
+        shutterHoldTriggered = false;
         if (isRecordingGif) {
           playClick();
           stopRecordingGif(true);
         }
+        shutterSuppressClick = true;
+        setTimeout(() => { shutterSuppressClick = false; }, 400);
         return;
       }
 
@@ -2095,6 +2126,8 @@
 
       playClick();
       takePhoto();
+      shutterSuppressClick = true;
+      setTimeout(() => { shutterSuppressClick = false; }, 400);
     }
 
     let audioCtx = null;
@@ -2173,26 +2206,41 @@
       });
     });
 
+    brightnessSlider.addEventListener("input", () => {
+      updateBrightnessFromSlider();
+    });
+
     btnCapture.addEventListener("pointerdown", (e) => {
       if (btnCapture.disabled || isRecordingGif) return;
-      e.preventDefault();
-      btnCapture.setPointerCapture(e.pointerId);
-      shutterHoldActive = false;
+      e.stopPropagation();
+      shutterIsPressed = true;
+      shutterHoldTriggered = false;
       clearShutterHoldTimer();
+      try {
+        btnCapture.setPointerCapture(e.pointerId);
+      } catch {}
       shutterHoldTimer = setTimeout(() => {
         shutterHoldTimer = null;
-        shutterHoldActive = true;
+        if (!shutterIsPressed || btnCapture.disabled || !stream) return;
+        shutterHoldTriggered = true;
         playClick();
         startRecordingGif();
       }, HOLD_TO_GIF_MS);
     });
 
     btnCapture.addEventListener("pointerup", (e) => {
+      e.stopPropagation();
       finishShutterPress(e.pointerId);
     });
 
     btnCapture.addEventListener("pointercancel", (e) => {
       finishShutterPress(e.pointerId);
+    });
+
+    btnCapture.addEventListener("click", (e) => {
+      if (btnCapture.disabled || isRecordingGif || shutterSuppressClick) return;
+      playClick();
+      takePhoto();
     });
 
     btnRetake.addEventListener("click", () => {
