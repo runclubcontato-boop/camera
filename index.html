@@ -460,6 +460,7 @@
     const CAPTURE_MAX = 960;
     const CAMERA_KEY = "run_camera_ok";
     const FIRST_PHOTO_KEY = "run_first_photo_done";
+    let catAlreadyShown = false;
 
     const catOverlay = new Image();
     catOverlay.src = "gato.png";
@@ -477,13 +478,27 @@
       }
     }
 
+    function initCatState() {
+      try {
+        catAlreadyShown =
+          localStorage.getItem(FIRST_PHOTO_KEY) === "1" ||
+          sessionStorage.getItem(FIRST_PHOTO_KEY) === "1";
+      } catch {
+        catAlreadyShown = false;
+      }
+    }
+
     function isFirstPhoto() {
-      try { return !localStorage.getItem(FIRST_PHOTO_KEY); } catch { return false; }
+      return !catAlreadyShown;
     }
 
     function markFirstPhotoDone() {
+      catAlreadyShown = true;
+      try { sessionStorage.setItem(FIRST_PHOTO_KEY, "1"); } catch {}
       try { localStorage.setItem(FIRST_PHOTO_KEY, "1"); } catch {}
     }
+
+    initCatState();
 
     function drawCatOverlay(ctx, w, h) {
       if (!catOverlayReady || !catOverlay.naturalWidth) return;
@@ -1229,8 +1244,8 @@
         viewfinderLabel.textContent = "Capturando...";
         captureViewfinderFrame(video);
         showCatOnCapture = isFirstPhoto();
-        renderCaptured();
         if (showCatOnCapture) markFirstPhotoDone();
+        renderCaptured();
         capturedIsGif = false;
         setCaptureUI(true);
         viewfinderLabel.textContent = "Capturada";
