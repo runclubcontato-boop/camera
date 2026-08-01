@@ -238,7 +238,7 @@
     }
 
     .filter-btn {
-      flex: 1 1 calc(33.333% - 0.4rem);
+      flex: 1 1 calc(25% - 0.3rem);
       font-family: inherit;
       font-size: 0.65rem;
       font-weight: 600;
@@ -299,11 +299,14 @@
       align-items: center;
       padding-right: 0.15rem;
       flex-shrink: 0;
+      min-width: 8.5rem;
     }
 
     html[data-orient="90"] .shutter-area,
     html[data-orient="270"] .shutter-area {
       padding: 0;
+      flex-wrap: wrap;
+      max-width: 8.5rem;
     }
 
     .camera-controls {
@@ -314,6 +317,7 @@
       display: flex;
       align-items: center;
       justify-content: center;
+      gap: 0.75rem;
       padding: 0.25rem 0;
     }
 
@@ -325,6 +329,7 @@
       background: #ffb4b4;
       box-shadow: var(--shadow-sm);
       cursor: pointer;
+      touch-action: none;
       padding: 0;
     }
 
@@ -447,29 +452,6 @@
     <div class="panel active" id="screen-camera">
       <p class="camera-intro">Registre momentos com esses efeitos meia boca, salve suas fotos e poste onde vc quiser (ou deixa guardado para o esquecimento...)</p>
 
-      <div class="camera-toolbar">
-        <button class="icon-btn" id="btnFlip" aria-label="Virar câmera">
-          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-            <path d="M7 4v4H3" stroke="#111" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
-            <path d="M3 8c1.6-3.2 5.1-5.2 9-5.2 3.5 0 6.6 1.7 8.4 4.4" stroke="#111" stroke-width="2.2" stroke-linecap="round"/>
-            <path d="M17 20v-4h4" stroke="#111" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
-            <path d="M21 16c-1.6 3.2-5.1 5.2-9 5.2-3.5 0-6.6-1.7-8.4-4.4" stroke="#111" stroke-width="2.2" stroke-linecap="round"/>
-          </svg>
-        </button>
-        <button class="icon-btn" id="btnVideo" aria-label="Modo GIF">
-          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-            <rect x="3" y="6.5" width="12.5" height="11" rx="2" stroke="#111" stroke-width="2.2"/>
-            <path d="M15.5 10.5l5.5-3.2v9.4l-5.5-3.2" stroke="#111" stroke-width="2.2" stroke-linejoin="round"/>
-          </svg>
-        </button>
-        <button class="icon-btn" id="btnSave" disabled aria-label="Salvar">
-          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-            <path d="M12 3v12m0 0l4-4m-4 4L8 11" stroke="#111" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
-            <path d="M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2" stroke="#111" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-        </button>
-      </div>
-
       <div class="camera-stage">
         <div class="stage-main">
           <div class="viewfinder-wrap" id="viewfinderWrap">
@@ -500,8 +482,22 @@
 
         <div class="stage-side">
           <div class="shutter-area">
+            <button class="icon-btn" id="btnFlip" aria-label="Virar câmera">
+              <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <path d="M7 4v4H3" stroke="#111" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M3 8c1.6-3.2 5.1-5.2 9-5.2 3.5 0 6.6 1.7 8.4 4.4" stroke="#111" stroke-width="2.2" stroke-linecap="round"/>
+                <path d="M17 20v-4h4" stroke="#111" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M21 16c-1.6 3.2-5.1 5.2-9 5.2-3.5 0-6.6-1.7-8.4-4.4" stroke="#111" stroke-width="2.2" stroke-linecap="round"/>
+              </svg>
+            </button>
             <button class="shutter" id="btnCapture" type="button" aria-label="Capturar"></button>
             <button class="btn btn-retake" id="btnRetake">Tirar outra</button>
+            <button class="icon-btn" id="btnSave" disabled aria-label="Salvar">
+              <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <path d="M12 3v12m0 0l4-4m-4 4L8 11" stroke="#111" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2" stroke="#111" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </button>
           </div>
         </div>
       </div>
@@ -516,7 +512,6 @@
     const btnCapture = document.getElementById("btnCapture");
     const btnRetake = document.getElementById("btnRetake");
     const btnFlip = document.getElementById("btnFlip");
-    const btnVideo = document.getElementById("btnVideo");
     const btnSave = document.getElementById("btnSave");
     const screenCamera = document.getElementById("screen-camera");
 
@@ -543,10 +538,12 @@
     let capturedDataUrl = null;
     let currentFilter = "bw";
     let facingMode = "environment";
-    let captureMode = "photo";
     let capturedIsGif = false;
     let capturedBlobUrl = null;
     let isRecordingGif = false;
+    let shutterHoldTimer = null;
+    let shutterHoldActive = false;
+    const HOLD_TO_GIF_MS = 300;
     let gifFrames = [];
     let gifRecordTimer = null;
     let gifencModule = null;
@@ -556,6 +553,10 @@
     const LIVE_FPS = 12;
     const LIVE_PREVIEW_MAX = 480;
     const CAPTURE_MAX = 960;
+    const SAVE_WIDTH = 1080;
+    const SAVE_HEIGHT = 1440;
+    const SAVE_DPI = 150;
+    const SAVE_JPEG_QUALITY = 0.92;
     const CAMERA_KEY = "run_camera_ok";
     let catAlreadyShown = false;
     let showCatOnCapture = false;
@@ -599,11 +600,8 @@
     }
 
     function updateCaptureModeUI() {
-      const isGif = captureMode === "gif";
-      btnVideo.classList.toggle("active", isGif);
-      screenCamera.classList.toggle("gif-mode", isGif);
       if (!viewfinder.classList.contains("captured") && !isRecordingGif) {
-        viewfinderLabel.textContent = isGif ? "Modo GIF" : "Ao vivo";
+        viewfinderLabel.textContent = "Ao vivo";
       }
     }
 
@@ -685,13 +683,14 @@
     }
 
     function sampleTapBrightness(normX, normY) {
-      const crop = getViewfinderVideoCrop(video);
-      if (!crop) return 0.5;
+      captureViewfinderFrame(video);
+      const w = rawCanvas.width;
+      const h = rawCanvas.height;
+      if (!w || !h) return 0.5;
 
-      const { sx, sy, sw, sh } = crop;
-      const cx = sx + normX * sw;
-      const cy = sy + normY * sh;
-      const patch = Math.max(18, Math.min(sw, sh) * 0.14);
+      const cx = normX * w;
+      const cy = normY * h;
+      const patch = Math.max(12, Math.min(w, h) * 0.12);
 
       if (!sampleCanvas) sampleCanvas = document.createElement("canvas");
       const size = 8;
@@ -699,7 +698,7 @@
       sampleCanvas.height = size;
       const ctx = sampleCanvas.getContext("2d", { willReadFrequently: true });
       ctx.drawImage(
-        video,
+        rawCanvas,
         cx - patch / 2,
         cy - patch / 2,
         patch,
@@ -719,23 +718,12 @@
     }
 
     function clampExposureBias(value) {
-      return Math.max(-1.8, Math.min(1.8, value));
+      return Math.max(-1.5, Math.min(1.5, value));
     }
 
     function computeExposureBias(brightness) {
-      const target = 0.38;
-      return clampExposureBias((target - brightness) * 2.3);
-    }
-
-    function getHardwareExposureComp(track, bias) {
-      const caps = track.getCapabilities?.();
-      if (!caps?.exposureCompensation) return null;
-
-      const step = caps.exposureCompensation.step || 0.5;
-      const min = caps.exposureCompensation.min;
-      const max = caps.exposureCompensation.max;
-      const stepped = Math.round(bias / step) * step;
-      return Math.max(min, Math.min(max, stepped));
+      const target = 0.4;
+      return clampExposureBias((target - brightness) * 1.9);
     }
 
     function applyExposureBias(ctx, w, h) {
@@ -743,8 +731,8 @@
 
       const imgData = ctx.getImageData(0, 0, w, h);
       const px = imgData.data;
-      const mult = Math.pow(2, exposureBias * 0.55);
-      const offset = exposureBias * 10;
+      const mult = Math.pow(2, exposureBias * 0.62);
+      const offset = exposureBias * 8;
 
       for (let i = 0; i < px.length; i += 4) {
         px[i]     = Math.max(0, Math.min(255, px[i] * mult + offset));
@@ -782,9 +770,7 @@
       showFocusRing(clientX, clientY);
 
       const brightness = sampleTapBrightness(x, y);
-      const bias = computeExposureBias(brightness);
-      const hwExposure = getHardwareExposureComp(track, bias);
-      exposureBias = hwExposure == null ? bias : 0;
+      exposureBias = computeExposureBias(brightness);
 
       const point = { x, y };
       const attempts = [
@@ -792,25 +778,21 @@
           advanced: [{
             pointsOfInterest: [point],
             focusMode: "single-shot",
-            exposureMode: "single-shot",
-            ...(hwExposure != null ? { exposureCompensation: hwExposure } : {})
-          }]
-        },
-        {
-          advanced: [{
-            pointsOfInterest: [point],
-            exposureMode: "single-shot",
-            ...(hwExposure != null ? { exposureCompensation: hwExposure } : {})
-          }]
-        },
-        {
-          advanced: [{
-            pointsOfInterest: [point],
-            focusMode: "single-shot",
             exposureMode: "single-shot"
           }]
         },
-        { advanced: [{ pointsOfInterest: [point], focusMode: "single-shot" }] },
+        {
+          advanced: [{
+            pointsOfInterest: [point],
+            exposureMode: "single-shot"
+          }]
+        },
+        {
+          advanced: [{
+            pointsOfInterest: [point],
+            focusMode: "single-shot"
+          }]
+        },
         { advanced: [{ pointsOfInterest: [point] }] },
         { focusMode: "single-shot" },
         { advanced: [{ focusMode: "continuous" }] }
@@ -890,7 +872,6 @@
       btnCapture.disabled = captured;
       btnRetake.disabled = !captured;
       btnFlip.disabled = captured;
-      btnVideo.disabled = captured;
       btnSave.disabled = !captured;
     }
 
@@ -943,7 +924,6 @@
       gifOrientation = orientationAngle;
       btnCapture.classList.add("recording");
       btnFlip.disabled = true;
-      btnVideo.disabled = true;
       viewfinderLabel.textContent = "Gravando...";
 
       const GIF_FPS = 8;
@@ -973,11 +953,15 @@
       isRecordingGif = false;
       btnCapture.classList.remove("recording");
       btnFlip.disabled = false;
-      btnVideo.disabled = viewfinder.classList.contains("captured");
 
-      if (!save || gifFrames.length === 0) {
+      if (!save || gifFrames.length < 2) {
+        const tooShort = save && gifFrames.length < 2;
         gifFrames = [];
         updateCaptureModeUI();
+        if (tooShort) {
+          viewfinderLabel.textContent = "Ao vivo";
+          showToast("Segure um pouco mais");
+        }
         return;
       }
 
@@ -992,7 +976,6 @@
         capturedDataUrl = capturedBlobUrl;
         capturedIsGif = true;
         preview.src = capturedDataUrl;
-        captureMode = "photo";
         updateCaptureModeUI();
         setCaptureUI(true);
         viewfinderLabel.textContent = "GIF";
@@ -1004,13 +987,6 @@
       }
 
       gifFrames = [];
-    }
-
-    function toggleCaptureMode() {
-      if (viewfinder.classList.contains("captured") || isRecordingGif) return;
-
-      captureMode = captureMode === "photo" ? "gif" : "photo";
-      updateCaptureModeUI();
     }
 
     function stopLivePreview() {
@@ -1974,15 +1950,6 @@
         return;
       }
 
-      if (captureMode === "gif") {
-        if (isRecordingGif) {
-          stopRecordingGif(true);
-        } else {
-          startRecordingGif();
-        }
-        return;
-      }
-
       try {
         viewfinderLabel.textContent = "Capturando...";
         capturedOrientation = orientationAngle;
@@ -2007,7 +1974,6 @@
       capturedDataUrl = null;
       capturedIsGif = false;
       hideCatSticker();
-      captureMode = "photo";
       revokeCapturedUrl();
       setCaptureUI(false);
       updateCaptureModeUI();
@@ -2017,32 +1983,82 @@
     function savePhoto() {
       if (!capturedDataUrl) return;
 
-      if (showCatOnCapture && catOverlayReady && !capturedIsGif) {
-        const base = new Image();
-        base.onload = () => {
-          const out = document.createElement("canvas");
-          out.width = base.width;
-          out.height = base.height;
-          const ctx = out.getContext("2d");
-          ctx.drawImage(base, 0, 0);
-          try {
-            drawCatOverlay(ctx, out.width, out.height);
-            downloadDataUrl(out.toDataURL("image/jpeg", 0.92), "run-foto.jpg");
-          } catch {
-            downloadDataUrl(capturedDataUrl, "run-foto.jpg");
-          }
-          showToast("Foto salva!");
-        };
-        base.onerror = () => {
-          downloadDataUrl(capturedDataUrl, "run-foto.jpg");
-          showToast("Foto salva!");
-        };
-        base.src = capturedDataUrl;
+      if (capturedIsGif) {
+        downloadDataUrl(capturedDataUrl, "run-foto.gif");
+        showToast("GIF salvo!");
         return;
       }
 
-      downloadDataUrl(capturedDataUrl, capturedIsGif ? "run-foto.gif" : "run-foto.jpg");
-      showToast(capturedIsGif ? "GIF salvo!" : "Foto salva!");
+      const img = new Image();
+      img.onload = () => {
+        try {
+          const includeCat = showCatOnCapture && catOverlayReady;
+          const url = buildSavePhotoDataUrl(img, includeCat);
+          downloadDataUrl(url, "run-foto.jpg");
+          showToast("Foto salva!");
+        } catch {
+          showToast("Erro ao salvar");
+        }
+      };
+      img.onerror = () => showToast("Erro ao salvar");
+      img.src = capturedDataUrl;
+    }
+
+    function drawCoverImage(ctx, img, outW, outH) {
+      const scale = Math.max(outW / img.width, outH / img.height);
+      const drawW = img.width * scale;
+      const drawH = img.height * scale;
+      const x = (outW - drawW) / 2;
+      const y = (outH - drawH) / 2;
+      ctx.drawImage(img, x, y, drawW, drawH);
+    }
+
+    function buildSavePhotoDataUrl(img, includeCat = false) {
+      const out = document.createElement("canvas");
+      out.width = SAVE_WIDTH;
+      out.height = SAVE_HEIGHT;
+      const ctx = out.getContext("2d");
+      ctx.fillStyle = "#000";
+      ctx.fillRect(0, 0, SAVE_WIDTH, SAVE_HEIGHT);
+      drawCoverImage(ctx, img, SAVE_WIDTH, SAVE_HEIGHT);
+      if (includeCat) drawCatOverlay(ctx, SAVE_WIDTH, SAVE_HEIGHT);
+      return canvasToJpegWithDpi(out, SAVE_DPI, SAVE_JPEG_QUALITY);
+    }
+
+    function setJpegDpi(bytes, dpi) {
+      for (let i = 0; i < bytes.length - 16; i++) {
+        if (
+          bytes[i] === 0xFF && bytes[i + 1] === 0xE0 &&
+          bytes[i + 4] === 0x4A && bytes[i + 5] === 0x46 &&
+          bytes[i + 6] === 0x49 && bytes[i + 7] === 0x46 && bytes[i + 8] === 0x00
+        ) {
+          bytes[i + 11] = 1;
+          bytes[i + 12] = (dpi >> 8) & 0xFF;
+          bytes[i + 13] = dpi & 0xFF;
+          bytes[i + 14] = (dpi >> 8) & 0xFF;
+          bytes[i + 15] = dpi & 0xFF;
+          return;
+        }
+      }
+    }
+
+    function bytesToBase64(bytes) {
+      let binary = "";
+      const chunk = 0x8000;
+      for (let i = 0; i < bytes.length; i += chunk) {
+        binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
+      }
+      return btoa(binary);
+    }
+
+    function canvasToJpegWithDpi(canvas, dpi, quality) {
+      const dataUrl = canvas.toDataURL("image/jpeg", quality);
+      const base64 = dataUrl.split(",")[1];
+      const binary = atob(base64);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+      setJpegDpi(bytes, dpi);
+      return `data:image/jpeg;base64,${bytesToBase64(bytes)}`;
     }
 
     function downloadDataUrl(url, filename) {
@@ -2050,6 +2066,35 @@
       a.href = url;
       a.download = filename;
       a.click();
+    }
+
+    function clearShutterHoldTimer() {
+      if (shutterHoldTimer) {
+        clearTimeout(shutterHoldTimer);
+        shutterHoldTimer = null;
+      }
+    }
+
+    function finishShutterPress(pointerId) {
+      clearShutterHoldTimer();
+
+      if (pointerId != null && btnCapture.hasPointerCapture(pointerId)) {
+        btnCapture.releasePointerCapture(pointerId);
+      }
+
+      if (shutterHoldActive || isRecordingGif) {
+        shutterHoldActive = false;
+        if (isRecordingGif) {
+          playClick();
+          stopRecordingGif(true);
+        }
+        return;
+      }
+
+      if (btnCapture.disabled) return;
+
+      playClick();
+      takePhoto();
     }
 
     let audioCtx = null;
@@ -2128,11 +2173,28 @@
       });
     });
 
-    btnCapture.addEventListener("click", () => {
-      if (btnCapture.disabled) return;
-      playClick();
-      takePhoto();
+    btnCapture.addEventListener("pointerdown", (e) => {
+      if (btnCapture.disabled || isRecordingGif) return;
+      e.preventDefault();
+      btnCapture.setPointerCapture(e.pointerId);
+      shutterHoldActive = false;
+      clearShutterHoldTimer();
+      shutterHoldTimer = setTimeout(() => {
+        shutterHoldTimer = null;
+        shutterHoldActive = true;
+        playClick();
+        startRecordingGif();
+      }, HOLD_TO_GIF_MS);
     });
+
+    btnCapture.addEventListener("pointerup", (e) => {
+      finishShutterPress(e.pointerId);
+    });
+
+    btnCapture.addEventListener("pointercancel", (e) => {
+      finishShutterPress(e.pointerId);
+    });
+
     btnRetake.addEventListener("click", () => {
       if (btnRetake.disabled) return;
       playClick();
@@ -2142,11 +2204,6 @@
       if (btnFlip.disabled) return;
       playClick();
       flipCamera();
-    });
-    btnVideo.addEventListener("click", () => {
-      if (btnVideo.disabled) return;
-      playClick();
-      toggleCaptureMode();
     });
     btnSave.addEventListener("click", () => {
       if (btnSave.disabled) return;
