@@ -1,0 +1,823 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>RUN!</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --black: #111;
+      --cream: #FCF9F0;
+      --mint: #C8E6D4;
+      --shadow: 5px 5px 0 0 var(--black);
+      --shadow-sm: 3px 3px 0 0 var(--black);
+      --radius: 8px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: "Inter", system-ui, sans-serif;
+      color: var(--black);
+      min-height: 100dvh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+      background:
+        radial-gradient(ellipse 90% 70% at 15% 85%, #b8dcc8 0%, transparent 55%),
+        radial-gradient(ellipse 80% 60% at 85% 15%, #dceee3 0%, transparent 50%),
+        radial-gradient(ellipse 60% 50% at 50% 50%, #f0ebe0 0%, transparent 70%),
+        linear-gradient(155deg, #c5e3d1 0%, #f5f0e4 50%, #fcf9f0 100%);
+    }
+
+    .app {
+      width: 100%;
+      max-width: 380px;
+    }
+
+    .card {
+      background: var(--cream);
+      border: 3px solid var(--black);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 1.25rem;
+    }
+
+    .panel {
+      display: none;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .panel.active {
+      display: flex;
+    }
+
+    .card-title {
+      font-size: 1rem;
+      font-weight: 700;
+      margin-bottom: 0.6rem;
+    }
+
+    .card-text {
+      font-size: 0.9rem;
+      font-weight: 400;
+      line-height: 1.55;
+      color: #333;
+    }
+
+    .btn {
+      font-family: inherit;
+      font-size: 0.875rem;
+      font-weight: 600;
+      padding: 0.7rem 1.25rem;
+      border: 3px solid var(--black);
+      border-radius: var(--radius);
+      background: var(--cream);
+      color: var(--black);
+      cursor: pointer;
+      box-shadow: var(--shadow-sm);
+      transition: transform 0.08s, box-shadow 0.08s;
+    }
+
+    .btn:active:not(:disabled) {
+      transform: translate(2px, 2px);
+      box-shadow: 1px 1px 0 0 var(--black);
+    }
+
+    .btn:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+    }
+
+    .btn-full {
+      width: 100%;
+      text-align: center;
+    }
+
+    .camera-intro {
+      font-size: 0.8rem;
+      font-weight: 400;
+      line-height: 1.5;
+      color: #333;
+      text-align: left;
+    }
+
+    /* Viewfinder */
+    .viewfinder-wrap {
+      border: 3px solid var(--black);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      background: #222;
+      position: relative;
+    }
+
+    .viewfinder-top {
+      position: absolute;
+      top: 0.65rem;
+      left: 0.65rem;
+      right: 0.65rem;
+      display: flex;
+      justify-content: flex-end;
+      align-items: flex-start;
+      z-index: 6;
+      pointer-events: none;
+    }
+
+    .viewfinder-top > * {
+      pointer-events: auto;
+    }
+
+    .viewfinder {
+      aspect-ratio: 3 / 4;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .viewfinder video,
+    .viewfinder img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .viewfinder img {
+      display: none;
+    }
+
+    .viewfinder.captured video {
+      display: none;
+    }
+
+    .viewfinder.captured img {
+      display: block;
+    }
+
+    .viewfinder-label {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: var(--black);
+      color: var(--cream);
+      font-size: 0.7rem;
+      font-weight: 600;
+      padding: 0.3rem 0.6rem;
+      text-align: center;
+      letter-spacing: 0.04em;
+    }
+
+    /* Filters */
+    .filter-row {
+      display: flex;
+      gap: 0.4rem;
+      flex-wrap: wrap;
+    }
+
+    .filter-btn {
+      flex: 1 1 calc(33.333% - 0.4rem);
+      font-family: inherit;
+      font-size: 0.65rem;
+      font-weight: 600;
+      padding: 0.4rem 0.25rem;
+      border: 2px solid var(--black);
+      border-radius: 6px;
+      background: var(--cream);
+      color: var(--black);
+      cursor: pointer;
+      box-shadow: 2px 2px 0 0 var(--black);
+    }
+
+    .filter-btn.active {
+      background: var(--black);
+      color: var(--cream);
+    }
+
+    .filter-btn:active {
+      transform: translate(1px, 1px);
+      box-shadow: 1px 1px 0 0 var(--black);
+    }
+
+    /* Camera controls */
+    .camera-controls {
+      display: flex;
+      flex-direction: column;
+      gap: 0.85rem;
+    }
+
+    .shutter-area {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0.25rem 0;
+    }
+
+    .shutter {
+      width: 68px;
+      height: 68px;
+      border-radius: 50%;
+      border: 3px solid var(--black);
+      background: #ffb4b4;
+      box-shadow: var(--shadow-sm);
+      cursor: pointer;
+      padding: 0;
+    }
+
+    .shutter:active:not(:disabled) {
+      transform: translate(2px, 2px);
+      box-shadow: 1px 1px 0 0 var(--black);
+    }
+
+    .shutter:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+    }
+
+    .btn-retake {
+      display: none;
+      font-size: 0.8rem;
+      padding: 0.65rem 1.1rem;
+      white-space: nowrap;
+    }
+
+    #screen-camera.captured .shutter {
+      display: none;
+    }
+
+    #screen-camera.captured .btn-retake {
+      display: block;
+    }
+
+    /* Download save button */
+    .btn-download {
+      border: none;
+      background: none;
+      box-shadow: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0.25rem;
+      flex-shrink: 0;
+    }
+
+    .btn-download svg {
+      width: 32px;
+      height: 32px;
+      filter: drop-shadow(1px 1px 0 rgba(0,0,0,0.15));
+    }
+
+    .btn-download:active:not(:disabled) {
+      transform: scale(0.92);
+    }
+
+    .btn-download:disabled {
+      opacity: 0.3;
+      cursor: not-allowed;
+    }
+
+    /* Toast */
+    .toast {
+      position: fixed;
+      bottom: 1.5rem;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--cream);
+      color: var(--black);
+      padding: 0.6rem 1.1rem;
+      font-size: 0.8rem;
+      font-weight: 600;
+      border: 3px solid var(--black);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-sm);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s;
+      z-index: 200;
+      white-space: nowrap;
+    }
+
+    .toast.show {
+      opacity: 1;
+    }
+
+    .hidden-canvas {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="app">
+    <div class="panel active" id="screen-camera">
+      <p class="camera-intro">Registre momentos com esses efeitos meia boca, salve suas fotos e poste onde vc quiser (ou deixa guardado para o esquecimento...)</p>
+
+      <div class="viewfinder-wrap" id="viewfinderWrap">
+        <div class="viewfinder-top">
+          <button class="btn-download" id="btnSave" disabled aria-label="Salvar">
+            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+              <path d="M12 3v12m0 0l4-4m-4 4L8 11" stroke="#FCF9F0" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2" stroke="#FCF9F0" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+        </div>
+
+        <div class="viewfinder" id="viewfinder">
+          <video id="video" autoplay playsinline muted></video>
+          <img id="preview" alt="Foto capturada">
+          <div class="viewfinder-label" id="viewfinderLabel">Ao vivo</div>
+        </div>
+      </div>
+
+      <div class="camera-controls">
+        <div class="filter-row">
+          <button class="filter-btn active" data-filter="bw">P&amp;B</button>
+          <button class="filter-btn" data-filter="color">Color</button>
+          <button class="filter-btn" data-filter="focus">Foco</button>
+          <button class="filter-btn" data-filter="pixel">Pixel</button>
+        </div>
+
+        <div class="shutter-area">
+          <button class="shutter" id="btnCapture" aria-label="Capturar"></button>
+          <button class="btn btn-retake" id="btnRetake">Tirar outra</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+  <canvas class="hidden-canvas" id="canvas"></canvas>
+  <canvas class="hidden-canvas" id="rawCanvas"></canvas>
+
+  <script>
+    const btnCapture = document.getElementById("btnCapture");
+    const btnRetake = document.getElementById("btnRetake");
+    const btnSave = document.getElementById("btnSave");
+
+    const viewfinderWrap = document.getElementById("viewfinderWrap");
+    const viewfinder = document.getElementById("viewfinder");
+    const viewfinderLabel = document.getElementById("viewfinderLabel");
+    const video = document.getElementById("video");
+    const preview = document.getElementById("preview");
+    const canvas = document.getElementById("canvas");
+    const rawCanvas = document.getElementById("rawCanvas");
+    const toast = document.getElementById("toast");
+    const filterBtns = document.querySelectorAll(".filter-btn");
+
+    let stream = null;
+    let capturedDataUrl = null;
+    let currentFilter = "bw";
+    const CAMERA_KEY = "run_camera_ok";
+
+    function saveCameraPermission() {
+      try { localStorage.setItem(CAMERA_KEY, "1"); } catch {}
+    }
+
+    function clearCameraPermission() {
+      try { localStorage.removeItem(CAMERA_KEY); } catch {}
+    }
+
+    async function syncCameraPermission() {
+      if (!navigator.permissions?.query) return;
+      try {
+        const status = await navigator.permissions.query({ name: "camera" });
+        if (status.state === "granted") saveCameraPermission();
+        if (status.state === "denied") clearCameraPermission();
+        status.onchange = () => {
+          if (status.state === "granted") saveCameraPermission();
+          if (status.state === "denied") clearCameraPermission();
+        };
+      } catch {}
+    }
+
+    async function requestCameraStream() {
+      return navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "environment" },
+        audio: false
+      });
+    }
+
+    function showToast(msg) {
+      toast.textContent = msg;
+      toast.classList.add("show");
+      setTimeout(() => toast.classList.remove("show"), 2800);
+    }
+
+    function setCaptureUI(captured) {
+      viewfinderWrap.classList.toggle("captured", captured);
+      viewfinder.classList.toggle("captured", captured);
+      document.getElementById("screen-camera").classList.toggle("captured", captured);
+      btnCapture.disabled = captured;
+      btnRetake.disabled = !captured;
+      btnSave.disabled = !captured;
+    }
+
+    async function startCamera() {
+      try {
+        stream = await requestCameraStream();
+        saveCameraPermission();
+        video.srcObject = stream;
+        preview.src = "";
+        capturedDataUrl = null;
+        setCaptureUI(false);
+        viewfinderLabel.textContent = "Ao vivo";
+      } catch (err) {
+        if (err?.name === "NotAllowedError") {
+          clearCameraPermission();
+          showToast("Acesso à câmera negado");
+        } else {
+          showToast("Câmera indisponível");
+        }
+      }
+    }
+
+    function stopCamera() {
+      if (stream) {
+        stream.getTracks().forEach(t => t.stop());
+        stream = null;
+      }
+      video.srcObject = null;
+    }
+
+    function applyBwEffect(ctx, w, h) {
+      const imgData = ctx.getImageData(0, 0, w, h);
+      const px = imgData.data;
+      const cx = w / 2;
+      const cy = h / 2;
+      const maxDist = Math.sqrt(cx * cx + cy * cy);
+      const total = w * h;
+
+      const grainLayer = new Float32Array(total);
+      for (let n = 0; n < total; n++) {
+        grainLayer[n] = (Math.random() - 0.5) * 2;
+      }
+
+      for (let y = 0; y < h; y++) {
+        for (let x = 0; x < w; x++) {
+          const idx = y * w + x;
+          const i = idx * 4;
+
+          let lum = px[i] * 0.299 + px[i + 1] * 0.587 + px[i + 2] * 0.114;
+
+          lum = lum / 255;
+          lum = lum < 0.5
+            ? 2 * lum * lum
+            : 1 - Math.pow(-2 * lum + 2, 2) / 2;
+          lum = Math.pow(lum, 0.78) * 255;
+          lum = lum * 0.94 + 6;
+
+          const dx = x - cx;
+          const dy = y - cy;
+          const dist = Math.sqrt(dx * dx + dy * dy) / maxDist;
+          lum *= 1 - Math.pow(dist, 2.2) * 0.32;
+
+          const prev = idx > 0 ? grainLayer[idx - 1] : grainLayer[idx];
+          const next = idx < total - 1 ? grainLayer[idx + 1] : grainLayer[idx];
+          const clump = grainLayer[idx] * 0.5 + prev * 0.25 + next * 0.25;
+
+          const midWeight = 1 - Math.abs(lum / 255 - 0.5) * 1.4;
+          const grain = clump * 13 * Math.max(0.35, midWeight);
+          const fine = (Math.random() - 0.5) * 6 * Math.max(0.4, midWeight);
+
+          lum += grain + fine;
+          lum = Math.max(0, Math.min(255, lum));
+
+          const v = Math.round(lum);
+          px[i] = v;
+          px[i + 1] = v;
+          px[i + 2] = v;
+        }
+      }
+
+      ctx.putImageData(imgData, 0, 0);
+    }
+
+    function applyColorRetroEffect(ctx, w, h) {
+      const imgData = ctx.getImageData(0, 0, w, h);
+      const px = imgData.data;
+      const cx = w / 2;
+      const cy = h / 2;
+      const maxDist = Math.sqrt(cx * cx + cy * cy);
+      const total = w * h;
+
+      const grainLayer = new Float32Array(total);
+      for (let n = 0; n < total; n++) {
+        grainLayer[n] = (Math.random() - 0.5) * 2;
+      }
+
+      for (let y = 0; y < h; y++) {
+        for (let x = 0; x < w; x++) {
+          const idx = y * w + x;
+          const i = idx * 4;
+          let r = px[i];
+          let g = px[i + 1];
+          let b = px[i + 2];
+
+          const gray = r * 0.299 + g * 0.587 + b * 0.114;
+          const sat = 0.62;
+          r = r * sat + gray * (1 - sat);
+          g = g * sat + gray * (1 - sat);
+          b = b * sat + gray * (1 - sat);
+
+          r = r * 0.9 + g * 0.1 + 14;
+          g = g * 0.86 + b * 0.05 + 10;
+          b = b * 0.82 + 18;
+
+          r = r * 0.76 + 40;
+          g = g * 0.76 + 38;
+          b = b * 0.76 + 36;
+
+          r = 255 * Math.pow(r / 255, 0.97);
+          g = 255 * Math.pow(g / 255, 0.97);
+          b = 255 * Math.pow(b / 255, 0.97);
+
+          const dx = x - cx;
+          const dy = y - cy;
+          const dist = Math.sqrt(dx * dx + dy * dy) / maxDist;
+          const vignette = 1 - Math.pow(dist, 2) * 0.2;
+          r *= vignette;
+          g *= vignette;
+          b *= vignette;
+
+          const lum = (r + g + b) / 3;
+          const midWeight = 1 - Math.abs(lum / 255 - 0.5) * 1.2;
+          const prev = idx > 0 ? grainLayer[idx - 1] : grainLayer[idx];
+          const next = idx < total - 1 ? grainLayer[idx + 1] : grainLayer[idx];
+          const clump = grainLayer[idx] * 0.5 + prev * 0.25 + next * 0.25;
+          const grain = clump * 7 * Math.max(0.4, midWeight);
+          const fine = (Math.random() - 0.5) * 4 * Math.max(0.5, midWeight);
+
+          r += grain + fine;
+          g += grain * 0.98 + fine * 0.95;
+          b += grain * 0.95 + fine * 0.9;
+
+          px[i]     = Math.max(0, Math.min(255, r));
+          px[i + 1] = Math.max(0, Math.min(255, g));
+          px[i + 2] = Math.max(0, Math.min(255, b));
+        }
+      }
+
+      ctx.putImageData(imgData, 0, 0);
+    }
+
+    function samplePixel(px, w, h, x, y) {
+      x = Math.max(0, Math.min(w - 1.001, x));
+      y = Math.max(0, Math.min(h - 1.001, y));
+      const x0 = Math.floor(x);
+      const y0 = Math.floor(y);
+      const x1 = Math.min(x0 + 1, w - 1);
+      const y1 = Math.min(y0 + 1, h - 1);
+      const fx = x - x0;
+      const fy = y - y0;
+      const w00 = (1 - fx) * (1 - fy);
+      const w10 = fx * (1 - fy);
+      const w01 = (1 - fx) * fy;
+      const w11 = fx * fy;
+      const i00 = (y0 * w + x0) * 4;
+      const i10 = (y0 * w + x1) * 4;
+      const i01 = (y1 * w + x0) * 4;
+      const i11 = (y1 * w + x1) * 4;
+      return [
+        px[i00] * w00 + px[i10] * w10 + px[i01] * w01 + px[i11] * w11,
+        px[i00 + 1] * w00 + px[i10 + 1] * w10 + px[i01 + 1] * w01 + px[i11 + 1] * w11,
+        px[i00 + 2] * w00 + px[i10 + 2] * w10 + px[i01 + 2] * w01 + px[i11 + 2] * w11
+      ];
+    }
+
+    function applyRadialFocusEffect(ctx, w, h) {
+      const maxDim = 800;
+      let workCtx = ctx;
+      let ww = w;
+      let wh = h;
+      let tempCanvas = null;
+
+      if (Math.max(w, h) > maxDim) {
+        const scale = maxDim / Math.max(w, h);
+        ww = Math.round(w * scale);
+        wh = Math.round(h * scale);
+        tempCanvas = document.createElement("canvas");
+        tempCanvas.width = ww;
+        tempCanvas.height = wh;
+        workCtx = tempCanvas.getContext("2d");
+        workCtx.drawImage(ctx.canvas, 0, 0, ww, wh);
+      }
+
+      const src = workCtx.getImageData(0, 0, ww, wh);
+      const dst = workCtx.createImageData(ww, wh);
+      const px = src.data;
+      const out = dst.data;
+      const cx = ww / 2;
+      const focusHalfWidth = 0.2;
+
+      for (let y = 0; y < wh; y++) {
+        for (let x = 0; x < ww; x++) {
+          const i = (y * ww + x) * 4;
+          const normDistX = Math.abs(x - cx) / cx;
+
+          let blurAmount = Math.max(0, (normDistX - focusHalfWidth) / (1 - focusHalfWidth));
+          blurAmount = blurAmount * blurAmount * 0.85;
+
+          if (blurAmount < 0.02) {
+            out[i] = px[i];
+            out[i + 1] = px[i + 1];
+            out[i + 2] = px[i + 2];
+            out[i + 3] = 255;
+            continue;
+          }
+
+          const samples = Math.floor(8 + blurAmount * 20);
+          let r = 0;
+          let g = 0;
+          let b = 0;
+          const spread = blurAmount * cx * 0.38;
+
+          for (let s = 0; s < samples; s++) {
+            const t = s / (samples - 1) - 0.5;
+            const [sr, sg, sb] = samplePixel(px, ww, wh, x + t * spread * 2, y);
+            r += sr;
+            g += sg;
+            b += sb;
+          }
+
+          r = r / samples * 0.96 + 6;
+          g = g / samples * 0.96 + 6;
+          b = b / samples * 0.96 + 6;
+
+          out[i]     = Math.max(0, Math.min(255, r));
+          out[i + 1] = Math.max(0, Math.min(255, g));
+          out[i + 2] = Math.max(0, Math.min(255, b));
+          out[i + 3] = 255;
+        }
+      }
+
+      workCtx.putImageData(dst, 0, 0);
+
+      if (tempCanvas) {
+        ctx.drawImage(tempCanvas, 0, 0, w, h);
+      }
+    }
+
+    function applyPixelArtEffect(ctx, w, h) {
+      const imgData = ctx.getImageData(0, 0, w, h);
+      const px = imgData.data;
+      const cx = w / 2;
+      const cy = h / 2;
+      const maxDist = Math.sqrt(cx * cx + cy * cy);
+      const total = w * h;
+      const light = [244, 237, 227];
+      const dark = [45, 60, 88];
+
+      const grainLayer = new Float32Array(total);
+      for (let n = 0; n < total; n++) {
+        grainLayer[n] = (Math.random() - 0.5) * 2;
+      }
+
+      for (let y = 0; y < h; y++) {
+        for (let x = 0; x < w; x++) {
+          const idx = y * w + x;
+          const i = idx * 4;
+
+          let lum = px[i] * 0.299 + px[i + 1] * 0.587 + px[i + 2] * 0.114;
+
+          lum = lum / 255;
+          const linear = lum;
+          let curved = lum < 0.5
+            ? 2 * lum * lum
+            : 1 - Math.pow(-2 * lum + 2, 2) / 2;
+          curved = Math.pow(curved, 0.85);
+          lum = (linear * 0.3 + curved * 0.7) * 255;
+          lum = lum * 0.958 + 4;
+
+          const dx = x - cx;
+          const dy = y - cy;
+          const dist = Math.sqrt(dx * dx + dy * dy) / maxDist;
+          lum *= 1 - Math.pow(dist, 2.2) * 0.22;
+
+          const prev = idx > 0 ? grainLayer[idx - 1] : grainLayer[idx];
+          const next = idx < total - 1 ? grainLayer[idx + 1] : grainLayer[idx];
+          const clump = grainLayer[idx] * 0.5 + prev * 0.25 + next * 0.25;
+
+          const midWeight = 1 - Math.abs(lum / 255 - 0.5) * 1.4;
+          const grain = clump * 13 * Math.max(0.35, midWeight);
+          const fine = (Math.random() - 0.5) * 6 * Math.max(0.4, midWeight);
+
+          lum += grain + fine;
+
+          const threshold = ((x + y) % 2 === 0) ? 130 : 110;
+          const c = lum > threshold ? light : dark;
+
+          px[i] = c[0];
+          px[i + 1] = c[1];
+          px[i + 2] = c[2];
+        }
+      }
+
+      ctx.putImageData(imgData, 0, 0);
+    }
+
+    function applyFilter(ctx, w, h) {
+      if (currentFilter === "color") {
+        applyColorRetroEffect(ctx, w, h);
+      } else if (currentFilter === "focus") {
+        applyRadialFocusEffect(ctx, w, h);
+      } else if (currentFilter === "pixel") {
+        applyPixelArtEffect(ctx, w, h);
+      } else {
+        applyBwEffect(ctx, w, h);
+      }
+    }
+
+    function captureViewfinderFrame(source) {
+      const vw = source.videoWidth;
+      const vh = source.videoHeight;
+      const targetRatio = 3 / 4;
+      const sourceRatio = vw / vh;
+
+      let sx, sy, sw, sh;
+
+      if (sourceRatio > targetRatio) {
+        sh = vh;
+        sw = Math.round(vh * targetRatio);
+        sx = Math.round((vw - sw) / 2);
+        sy = 0;
+      } else {
+        sw = vw;
+        sh = Math.round(vw / targetRatio);
+        sx = 0;
+        sy = Math.round((vh - sh) / 2);
+      }
+
+      rawCanvas.width = sw;
+      rawCanvas.height = sh;
+      rawCanvas.getContext("2d").drawImage(source, sx, sy, sw, sh, 0, 0, sw, sh);
+    }
+
+    function renderCaptured() {
+      canvas.width = rawCanvas.width;
+      canvas.height = rawCanvas.height;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(rawCanvas, 0, 0);
+      applyFilter(ctx, canvas.width, canvas.height);
+      capturedDataUrl = canvas.toDataURL("image/jpeg", 0.92);
+      preview.src = capturedDataUrl;
+    }
+
+    function setFilter(filter) {
+      currentFilter = filter;
+      filterBtns.forEach(btn => {
+        btn.classList.toggle("active", btn.dataset.filter === filter);
+      });
+      if (viewfinder.classList.contains("captured")) {
+        renderCaptured();
+      }
+    }
+
+    function takePhoto() {
+      if (!stream) return;
+
+      captureViewfinderFrame(video);
+      renderCaptured();
+      setCaptureUI(true);
+      viewfinderLabel.textContent = "Capturada";
+      stopCamera();
+    }
+
+    function retakePhoto() {
+      preview.src = "";
+      capturedDataUrl = null;
+      setCaptureUI(false);
+      startCamera();
+    }
+
+    function savePhoto() {
+      if (!capturedDataUrl) return;
+      const a = document.createElement("a");
+      a.href = capturedDataUrl;
+      a.download = "run-foto.jpg";
+      a.click();
+      showToast("Foto salva!");
+    }
+
+    filterBtns.forEach(btn => {
+      btn.addEventListener("click", () => setFilter(btn.dataset.filter));
+    });
+
+    btnCapture.addEventListener("click", takePhoto);
+    btnRetake.addEventListener("click", retakePhoto);
+    btnSave.addEventListener("click", savePhoto);
+
+    syncCameraPermission();
+    startCamera();
+  </script>
+
+</body>
+</html>
