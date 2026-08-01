@@ -108,6 +108,19 @@
       line-height: 1.5;
       color: #333;
       text-align: left;
+      padding: 0.65rem 0.75rem;
+      border: 2px solid var(--black);
+      border-radius: 6px;
+      background: var(--cream);
+      box-shadow: 2px 2px 0 0 var(--black);
+    }
+
+    .camera-toolbar {
+      display: flex;
+      justify-content: flex-start;
+      align-items: center;
+      gap: 0.45rem;
+      min-height: 2.4rem;
     }
 
     /* Viewfinder */
@@ -120,22 +133,6 @@
       position: relative;
     }
 
-    .viewfinder-top {
-      position: absolute;
-      top: 0.65rem;
-      left: 0.65rem;
-      right: 0.65rem;
-      display: flex;
-      justify-content: flex-end;
-      align-items: flex-start;
-      z-index: 6;
-      pointer-events: none;
-    }
-
-    .viewfinder-top > * {
-      pointer-events: auto;
-    }
-
     .viewfinder {
       aspect-ratio: 3 / 4;
       overflow: hidden;
@@ -143,18 +140,23 @@
     }
 
     .viewfinder video,
-    .viewfinder img {
+    .viewfinder img,
+    .viewfinder canvas {
       width: 100%;
       height: 100%;
       object-fit: cover;
       display: block;
     }
 
+    .viewfinder video {
+      display: none;
+    }
+
     .viewfinder img {
       display: none;
     }
 
-    .viewfinder.captured video {
+    .viewfinder.captured #livePreview {
       display: none;
     }
 
@@ -242,6 +244,11 @@
       cursor: not-allowed;
     }
 
+    .shutter.recording {
+      background: #ff5a5a;
+      animation: pulse-rec 0.75s ease-in-out infinite;
+    }
+
     .btn-retake {
       display: none;
       font-size: 0.8rem;
@@ -257,32 +264,57 @@
       display: block;
     }
 
-    /* Download save button */
-    .btn-download {
-      border: none;
-      background: none;
-      box-shadow: none;
+    /* Icon buttons (viewfinder toolbar) */
+    .icon-btn {
+      border: 2px solid var(--black);
+      border-radius: 6px;
+      background: var(--cream);
+      box-shadow: 2px 2px 0 0 var(--black);
       cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 0.25rem;
+      padding: 0.4rem;
       flex-shrink: 0;
+      transition: transform 0.08s, box-shadow 0.08s;
     }
 
-    .btn-download svg {
-      width: 32px;
-      height: 32px;
-      filter: drop-shadow(1px 1px 0 rgba(0,0,0,0.15));
+    .icon-btn svg {
+      width: 22px;
+      height: 22px;
     }
 
-    .btn-download:active:not(:disabled) {
-      transform: scale(0.92);
+    .icon-btn:active:not(:disabled) {
+      transform: translate(1px, 1px);
+      box-shadow: 1px 1px 0 0 var(--black);
     }
 
-    .btn-download:disabled {
+    .icon-btn:disabled {
       opacity: 0.3;
       cursor: not-allowed;
+    }
+
+    .icon-btn.active {
+      background: var(--black);
+    }
+
+    .icon-btn.active svg path,
+    .icon-btn.active svg rect {
+      stroke: var(--cream);
+    }
+
+    .icon-btn.recording {
+      background: #ff5a5a;
+      animation: pulse-rec 0.75s ease-in-out infinite;
+    }
+
+    .icon-btn.recording svg path,
+    .icon-btn.recording svg rect {
+      stroke: var(--cream);
+    }
+
+    @keyframes pulse-rec {
+      50% { opacity: 0.6; }
     }
 
     /* Toast */
@@ -321,18 +353,33 @@
     <div class="panel active" id="screen-camera">
       <p class="camera-intro">Registre momentos com esses efeitos meia boca, salve suas fotos e poste onde vc quiser (ou deixa guardado para o esquecimento...)</p>
 
-      <div class="viewfinder-wrap" id="viewfinderWrap">
-        <div class="viewfinder-top">
-          <button class="btn-download" id="btnSave" disabled aria-label="Salvar">
-            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-              <path d="M12 3v12m0 0l4-4m-4 4L8 11" stroke="#FCF9F0" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
-              <path d="M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2" stroke="#FCF9F0" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          </button>
-        </div>
+      <div class="camera-toolbar">
+        <button class="icon-btn" id="btnFlip" aria-label="Virar câmera">
+          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <path d="M7 4v4H3" stroke="#111" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M3 8c1.6-3.2 5.1-5.2 9-5.2 3.5 0 6.6 1.7 8.4 4.4" stroke="#111" stroke-width="2.2" stroke-linecap="round"/>
+            <path d="M17 20v-4h4" stroke="#111" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M21 16c-1.6 3.2-5.1 5.2-9 5.2-3.5 0-6.6-1.7-8.4-4.4" stroke="#111" stroke-width="2.2" stroke-linecap="round"/>
+          </svg>
+        </button>
+        <button class="icon-btn" id="btnVideo" aria-label="Modo GIF">
+          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <rect x="3" y="6.5" width="12.5" height="11" rx="2" stroke="#111" stroke-width="2.2"/>
+            <path d="M15.5 10.5l5.5-3.2v9.4l-5.5-3.2" stroke="#111" stroke-width="2.2" stroke-linejoin="round"/>
+          </svg>
+        </button>
+        <button class="icon-btn" id="btnSave" disabled aria-label="Salvar">
+          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <path d="M12 3v12m0 0l4-4m-4 4L8 11" stroke="#111" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2" stroke="#111" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+      </div>
 
+      <div class="viewfinder-wrap" id="viewfinderWrap">
         <div class="viewfinder" id="viewfinder">
           <video id="video" autoplay playsinline muted></video>
+          <canvas id="livePreview" aria-hidden="true"></canvas>
           <img id="preview" alt="Foto capturada">
           <div class="viewfinder-label" id="viewfinderLabel">Ao vivo</div>
         </div>
@@ -342,6 +389,7 @@
         <div class="filter-row">
           <button class="filter-btn active" data-filter="bw">P&amp;B</button>
           <button class="filter-btn" data-filter="color">Color</button>
+          <button class="filter-btn" data-filter="teal">Teal</button>
           <button class="filter-btn" data-filter="focus">Foco</button>
           <button class="filter-btn" data-filter="pixel">Pixel</button>
         </div>
@@ -361,12 +409,17 @@
   <script>
     const btnCapture = document.getElementById("btnCapture");
     const btnRetake = document.getElementById("btnRetake");
+    const btnFlip = document.getElementById("btnFlip");
+    const btnVideo = document.getElementById("btnVideo");
     const btnSave = document.getElementById("btnSave");
+    const screenCamera = document.getElementById("screen-camera");
 
     const viewfinderWrap = document.getElementById("viewfinderWrap");
     const viewfinder = document.getElementById("viewfinder");
     const viewfinderLabel = document.getElementById("viewfinderLabel");
     const video = document.getElementById("video");
+    const livePreview = document.getElementById("livePreview");
+    const livePreviewCtx = livePreview.getContext("2d");
     const preview = document.getElementById("preview");
     const canvas = document.getElementById("canvas");
     const rawCanvas = document.getElementById("rawCanvas");
@@ -376,7 +429,66 @@
     let stream = null;
     let capturedDataUrl = null;
     let currentFilter = "bw";
+    let facingMode = "environment";
+    let captureMode = "photo";
+    let capturedIsGif = false;
+    let capturedBlobUrl = null;
+    let isRecordingGif = false;
+    let gifFrames = [];
+    let gifRecordTimer = null;
+    let gifencModule = null;
+    let livePreviewRaf = null;
+    let lastLiveFrame = 0;
+    const LIVE_FPS = 12;
+    const LIVE_PREVIEW_MAX = 480;
     const CAMERA_KEY = "run_camera_ok";
+    const FIRST_PHOTO_KEY = "run_first_photo_done";
+
+    const catOverlay = new Image();
+    catOverlay.src = "gato.png";
+    let catOverlayReady = false;
+    let showCatOnCapture = false;
+
+    catOverlay.onload = () => { catOverlayReady = true; };
+    catOverlay.onerror = () => { catOverlayReady = false; };
+
+    function revokeCapturedUrl() {
+      if (capturedBlobUrl) {
+        URL.revokeObjectURL(capturedBlobUrl);
+        capturedBlobUrl = null;
+      }
+    }
+
+    function isFirstPhoto() {
+      try { return !localStorage.getItem(FIRST_PHOTO_KEY); } catch { return false; }
+    }
+
+    function markFirstPhotoDone() {
+      try { localStorage.setItem(FIRST_PHOTO_KEY, "1"); } catch {}
+    }
+
+    function drawCatOverlay(ctx, w, h) {
+      if (!catOverlayReady || !catOverlay.naturalWidth) return;
+
+      const maxW = w * 0.4;
+      const scale = maxW / catOverlay.width;
+      const drawW = catOverlay.width * scale;
+      const drawH = catOverlay.height * scale;
+      const pad = w * 0.035;
+      const x = w - drawW - pad;
+      const y = h - drawH - pad;
+
+      ctx.drawImage(catOverlay, x, y, drawW, drawH);
+    }
+
+    function updateCaptureModeUI() {
+      const isGif = captureMode === "gif";
+      btnVideo.classList.toggle("active", isGif);
+      screenCamera.classList.toggle("gif-mode", isGif);
+      if (!viewfinder.classList.contains("captured") && !isRecordingGif) {
+        viewfinderLabel.textContent = isGif ? "Modo GIF" : "Ao vivo";
+      }
+    }
 
     function saveCameraPermission() {
       try { localStorage.setItem(CAMERA_KEY, "1"); } catch {}
@@ -401,7 +513,7 @@
 
     async function requestCameraStream() {
       return navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "environment" },
+        video: { facingMode: { ideal: facingMode } },
         audio: false
       });
     }
@@ -418,7 +530,187 @@
       document.getElementById("screen-camera").classList.toggle("captured", captured);
       btnCapture.disabled = captured;
       btnRetake.disabled = !captured;
+      btnFlip.disabled = captured;
+      btnVideo.disabled = captured;
       btnSave.disabled = !captured;
+    }
+
+    function captureFilteredFrame(maxDim) {
+      captureViewfinderFrame(video);
+
+      let w = rawCanvas.width;
+      let h = rawCanvas.height;
+      if (Math.max(w, h) > maxDim) {
+        const scale = maxDim / Math.max(w, h);
+        w = Math.round(w * scale);
+        h = Math.round(h * scale);
+      }
+
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(rawCanvas, 0, 0, w, h);
+      applyFilter(ctx, w, h);
+      return ctx.getImageData(0, 0, w, h);
+    }
+
+    async function loadGifenc() {
+      if (!gifencModule) {
+        gifencModule = await import("https://cdn.jsdelivr.net/npm/gifenc@1.0.3/+esm");
+      }
+      return gifencModule;
+    }
+
+    async function encodeGif(frames, w, h, delay = 125) {
+      const { GIFEncoder, quantize, applyPalette } = await loadGifenc();
+      const enc = GIFEncoder();
+
+      for (const frame of frames) {
+        const palette = quantize(frame.data, 256);
+        const index = applyPalette(frame.data, palette);
+        enc.writeFrame(index, w, h, { palette, delay });
+      }
+
+      enc.finish();
+      return new Blob([enc.bytes()], { type: "image/gif" });
+    }
+
+    function startRecordingGif() {
+      if (!stream || isRecordingGif) return;
+
+      isRecordingGif = true;
+      gifFrames = [];
+      btnCapture.classList.add("recording");
+      btnFlip.disabled = true;
+      btnVideo.disabled = true;
+      viewfinderLabel.textContent = "Gravando...";
+
+      const GIF_FPS = 8;
+      const GIF_MAX_SEC = 4;
+      const GIF_MAX = 320;
+
+      const captureFrame = () => {
+        if (!stream || !isRecordingGif) return;
+        gifFrames.push(captureFilteredFrame(GIF_MAX));
+        if (gifFrames.length >= GIF_FPS * GIF_MAX_SEC) {
+          stopRecordingGif(true);
+        }
+      };
+
+      captureFrame();
+      gifRecordTimer = setInterval(captureFrame, 1000 / GIF_FPS);
+    }
+
+    async function stopRecordingGif(save = true) {
+      if (gifRecordTimer) {
+        clearInterval(gifRecordTimer);
+        gifRecordTimer = null;
+      }
+
+      if (!isRecordingGif) return;
+
+      isRecordingGif = false;
+      btnCapture.classList.remove("recording");
+      btnFlip.disabled = false;
+      btnVideo.disabled = viewfinder.classList.contains("captured");
+
+      if (!save || gifFrames.length === 0) {
+        gifFrames = [];
+        updateCaptureModeUI();
+        return;
+      }
+
+      viewfinderLabel.textContent = "Processando...";
+
+      try {
+        const w = gifFrames[0].width;
+        const h = gifFrames[0].height;
+        const blob = await encodeGif(gifFrames, w, h);
+        revokeCapturedUrl();
+        capturedBlobUrl = URL.createObjectURL(blob);
+        capturedDataUrl = capturedBlobUrl;
+        capturedIsGif = true;
+        preview.src = capturedDataUrl;
+        captureMode = "photo";
+        updateCaptureModeUI();
+        setCaptureUI(true);
+        viewfinderLabel.textContent = "GIF";
+        stopCamera();
+        showToast("GIF pronto!");
+      } catch {
+        showToast("Erro ao criar GIF");
+        updateCaptureModeUI();
+      }
+
+      gifFrames = [];
+    }
+
+    function toggleCaptureMode() {
+      if (viewfinder.classList.contains("captured") || isRecordingGif) return;
+
+      captureMode = captureMode === "photo" ? "gif" : "photo";
+      updateCaptureModeUI();
+    }
+
+    function stopLivePreview() {
+      if (livePreviewRaf) {
+        cancelAnimationFrame(livePreviewRaf);
+        livePreviewRaf = null;
+      }
+    }
+
+    function renderLivePreview() {
+      if (!stream || viewfinder.classList.contains("captured")) return;
+
+      const vw = video.videoWidth;
+      const vh = video.videoHeight;
+      if (!vw || !vh) return;
+
+      captureViewfinderFrame(video);
+
+      let w = rawCanvas.width;
+      let h = rawCanvas.height;
+      if (Math.max(w, h) > LIVE_PREVIEW_MAX) {
+        const scale = LIVE_PREVIEW_MAX / Math.max(w, h);
+        w = Math.round(w * scale);
+        h = Math.round(h * scale);
+      }
+
+      if (livePreview.width !== w || livePreview.height !== h) {
+        livePreview.width = w;
+        livePreview.height = h;
+      }
+
+      livePreviewCtx.drawImage(rawCanvas, 0, 0, w, h);
+      applyFilter(livePreviewCtx, w, h);
+    }
+
+    function livePreviewLoop(ts) {
+      if (!stream || viewfinder.classList.contains("captured")) {
+        livePreviewRaf = null;
+        return;
+      }
+
+      if (!lastLiveFrame || ts - lastLiveFrame >= 1000 / LIVE_FPS) {
+        renderLivePreview();
+        lastLiveFrame = ts;
+      }
+
+      livePreviewRaf = requestAnimationFrame(livePreviewLoop);
+    }
+
+    function startLivePreview() {
+      stopLivePreview();
+      lastLiveFrame = 0;
+      renderLivePreview();
+      livePreviewRaf = requestAnimationFrame(livePreviewLoop);
+    }
+
+    async function flipCamera() {
+      if (viewfinder.classList.contains("captured")) return;
+      facingMode = facingMode === "environment" ? "user" : "environment";
+      stopCamera();
+      await startCamera();
     }
 
     async function startCamera() {
@@ -428,8 +720,16 @@
         video.srcObject = stream;
         preview.src = "";
         capturedDataUrl = null;
+        capturedIsGif = false;
+        revokeCapturedUrl();
         setCaptureUI(false);
-        viewfinderLabel.textContent = "Ao vivo";
+        updateCaptureModeUI();
+        await video.play().catch(() => {});
+        if (video.readyState >= 2) {
+          startLivePreview();
+        } else {
+          video.onloadeddata = () => startLivePreview();
+        }
       } catch (err) {
         if (err?.name === "NotAllowedError") {
           clearCameraPermission();
@@ -441,6 +741,7 @@
     }
 
     function stopCamera() {
+      stopLivePreview();
       if (stream) {
         stream.getTracks().forEach(t => t.stop());
         stream = null;
@@ -559,6 +860,78 @@
           r += grain + fine;
           g += grain * 0.98 + fine * 0.95;
           b += grain * 0.95 + fine * 0.9;
+
+          px[i]     = Math.max(0, Math.min(255, r));
+          px[i + 1] = Math.max(0, Math.min(255, g));
+          px[i + 2] = Math.max(0, Math.min(255, b));
+        }
+      }
+
+      ctx.putImageData(imgData, 0, 0);
+    }
+
+    function applyTealOrangeEffect(ctx, w, h) {
+      const imgData = ctx.getImageData(0, 0, w, h);
+      const px = imgData.data;
+      const cx = w / 2;
+      const cy = h / 2;
+      const maxDist = Math.sqrt(cx * cx + cy * cy);
+      const total = w * h;
+
+      const grainLayer = new Float32Array(total);
+      for (let n = 0; n < total; n++) {
+        grainLayer[n] = (Math.random() - 0.5) * 2;
+      }
+
+      for (let y = 0; y < h; y++) {
+        for (let x = 0; x < w; x++) {
+          const idx = y * w + x;
+          const i = idx * 4;
+          let r = px[i];
+          let g = px[i + 1];
+          let b = px[i + 2];
+
+          const lum = (r * 0.299 + g * 0.587 + b * 0.114) / 255;
+
+          r = ((r / 255 - 0.5) * 1.14 + 0.5) * 255;
+          g = ((g / 255 - 0.5) * 1.14 + 0.5) * 255;
+          b = ((b / 255 - 0.5) * 1.14 + 0.5) * 255;
+
+          const shadow = Math.pow(1 - lum, 2.1);
+          const highlight = Math.pow(lum, 1.7);
+
+          r += (18 - r) * shadow * 0.68;
+          g += (118 - g) * shadow * 0.58;
+          b += (142 - b) * shadow * 0.72;
+
+          r += (255 - r) * highlight * 0.44;
+          g += (132 - g) * highlight * 0.36;
+          b += (48 - b) * highlight * 0.58;
+
+          const skin = Math.max(0, 1 - Math.abs(lum - 0.52) * 2.2);
+          r += 14 * skin;
+          g += 6 * skin;
+          b -= 10 * skin;
+
+          const dx = x - cx;
+          const dy = y - cy;
+          const dist = Math.sqrt(dx * dx + dy * dy) / maxDist;
+          const vignette = 1 - Math.pow(dist, 2) * 0.24;
+          r *= vignette;
+          g *= vignette;
+          b *= vignette;
+
+          const avgLum = (r + g + b) / 3;
+          const midWeight = 1 - Math.abs(avgLum / 255 - 0.5) * 1.2;
+          const prev = idx > 0 ? grainLayer[idx - 1] : grainLayer[idx];
+          const next = idx < total - 1 ? grainLayer[idx + 1] : grainLayer[idx];
+          const clump = grainLayer[idx] * 0.5 + prev * 0.25 + next * 0.25;
+          const grain = clump * 6 * Math.max(0.4, midWeight);
+          const fine = (Math.random() - 0.5) * 3.5 * Math.max(0.5, midWeight);
+
+          r += grain + fine;
+          g += grain * 0.97 + fine * 0.95;
+          b += grain * 0.94 + fine * 0.9;
 
           px[i]     = Math.max(0, Math.min(255, r));
           px[i + 1] = Math.max(0, Math.min(255, g));
@@ -727,6 +1100,8 @@
     function applyFilter(ctx, w, h) {
       if (currentFilter === "color") {
         applyColorRetroEffect(ctx, w, h);
+      } else if (currentFilter === "teal") {
+        applyTealOrangeEffect(ctx, w, h);
       } else if (currentFilter === "focus") {
         applyRadialFocusEffect(ctx, w, h);
       } else if (currentFilter === "pixel") {
@@ -767,6 +1142,10 @@
       const ctx = canvas.getContext("2d");
       ctx.drawImage(rawCanvas, 0, 0);
       applyFilter(ctx, canvas.width, canvas.height);
+      if (showCatOnCapture) {
+        drawCatOverlay(ctx, canvas.width, canvas.height);
+      }
+      revokeCapturedUrl();
       capturedDataUrl = canvas.toDataURL("image/jpeg", 0.92);
       preview.src = capturedDataUrl;
     }
@@ -778,14 +1157,29 @@
       });
       if (viewfinder.classList.contains("captured")) {
         renderCaptured();
+      } else {
+        renderLivePreview();
       }
     }
 
     function takePhoto() {
       if (!stream) return;
 
+      if (captureMode === "gif") {
+        if (isRecordingGif) {
+          stopRecordingGif(true);
+        } else {
+          startRecordingGif();
+        }
+        return;
+      }
+
       captureViewfinderFrame(video);
+      showCatOnCapture = isFirstPhoto();
       renderCaptured();
+      if (showCatOnCapture) markFirstPhotoDone();
+      capturedIsGif = false;
+      revokeCapturedUrl();
       setCaptureUI(true);
       viewfinderLabel.textContent = "Capturada";
       stopCamera();
@@ -794,7 +1188,12 @@
     function retakePhoto() {
       preview.src = "";
       capturedDataUrl = null;
+      capturedIsGif = false;
+      showCatOnCapture = false;
+      captureMode = "photo";
+      revokeCapturedUrl();
       setCaptureUI(false);
+      updateCaptureModeUI();
       startCamera();
     }
 
@@ -802,9 +1201,9 @@
       if (!capturedDataUrl) return;
       const a = document.createElement("a");
       a.href = capturedDataUrl;
-      a.download = "run-foto.jpg";
+      a.download = capturedIsGif ? "run-foto.gif" : "run-foto.jpg";
       a.click();
-      showToast("Foto salva!");
+      showToast(capturedIsGif ? "GIF salvo!" : "Foto salva!");
     }
 
     filterBtns.forEach(btn => {
@@ -813,6 +1212,8 @@
 
     btnCapture.addEventListener("click", takePhoto);
     btnRetake.addEventListener("click", retakePhoto);
+    btnFlip.addEventListener("click", flipCamera);
+    btnVideo.addEventListener("click", toggleCaptureMode);
     btnSave.addEventListener("click", savePhoto);
 
     syncCameraPermission();
