@@ -164,6 +164,21 @@
       display: block;
     }
 
+    .cat-sticker {
+      position: absolute;
+      right: 4%;
+      bottom: 9%;
+      width: 38%;
+      height: auto;
+      display: none;
+      pointer-events: none;
+      z-index: 5;
+    }
+
+    .viewfinder.captured.show-cat .cat-sticker {
+      display: block;
+    }
+
     .viewfinder-label {
       position: absolute;
       bottom: 0;
@@ -381,6 +396,7 @@
           <video id="video" autoplay playsinline muted></video>
           <canvas id="livePreview" aria-hidden="true"></canvas>
           <img id="preview" alt="Foto capturada">
+          <img id="catSticker" class="cat-sticker" src="gato.png" alt="" aria-hidden="true">
           <div class="viewfinder-label" id="viewfinderLabel">Ao vivo</div>
         </div>
       </div>
@@ -395,7 +411,7 @@
         </div>
 
         <div class="shutter-area">
-          <button class="shutter" id="btnCapture" aria-label="Capturar"></button>
+          <button class="shutter" id="btnCapture" type="button" aria-label="Capturar"></button>
           <button class="btn btn-retake" id="btnRetake">Tirar outra</button>
         </div>
       </div>
@@ -441,6 +457,7 @@
     let lastLiveFrame = 0;
     const LIVE_FPS = 12;
     const LIVE_PREVIEW_MAX = 480;
+    const CAPTURE_MAX = 960;
     const CAMERA_KEY = "run_camera_ok";
     const FIRST_PHOTO_KEY = "run_first_photo_done";
 
@@ -451,6 +468,7 @@
 
     catOverlay.onload = () => { catOverlayReady = true; };
     catOverlay.onerror = () => { catOverlayReady = false; };
+    if (catOverlay.complete && catOverlay.naturalWidth) catOverlayReady = true;
 
     function revokeCapturedUrl() {
       if (capturedBlobUrl) {
@@ -527,6 +545,7 @@
     function setCaptureUI(captured) {
       viewfinderWrap.classList.toggle("captured", captured);
       viewfinder.classList.toggle("captured", captured);
+      viewfinder.classList.toggle("show-cat", captured && showCatOnCapture);
       document.getElementById("screen-camera").classList.toggle("captured", captured);
       btnCapture.disabled = captured;
       btnRetake.disabled = !captured;
@@ -1137,14 +1156,24 @@
     }
 
     function renderCaptured() {
-      canvas.width = rawCanvas.width;
-      canvas.height = rawCanvas.height;
-      const ctx = canvas.getContext("2d");
-      ctx.drawImage(rawCanvas, 0, 0);
-      applyFilter(ctx, canvas.width, canvas.height);
-      if (showCatOnCapture) {
-        drawCatOverlay(ctx, canvas.width, canvas.height);
+      let w = rawCanvas.width;
+      let h = rawCanvas.height;
+
+      if (!w || !h) {
+        throw new Error("empty-frame");
       }
+
+      if (Math.max(w, h) > CAPTURE_MAX) {
+        const scale = CAPTURE_MAX / Math.max(w, h);
+        w = Math.round(w * scale);
+        h = Math.round(h * scale);
+      }
+
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(rawCanvas, 0, 0, w, h);
+      applyFilter(ctx, w, h);
       revokeCapturedUrl();
       capturedDataUrl = canvas.toDataURL("image/jpeg", 0.92);
       preview.src = capturedDataUrl;
@@ -1163,7 +1192,15 @@
     }
 
     function takePhoto() {
-      if (!stream) return;
+      if (!stream) {
+        showToast("Câmera não está pronta");
+        return;
+      }
+
+      if (!video.videoWidth || !video.videoHeight) {
+        showToast("Aguarde a câmera carregar");
+        return;
+      }
 
       if (captureMode === "gif") {
         if (isRecordingGif) {
@@ -1174,15 +1211,22 @@
         return;
       }
 
-      captureViewfinderFrame(video);
-      showCatOnCapture = isFirstPhoto();
-      renderCaptured();
-      if (showCatOnCapture) markFirstPhotoDone();
-      capturedIsGif = false;
-      revokeCapturedUrl();
-      setCaptureUI(true);
-      viewfinderLabel.textContent = "Capturada";
-      stopCamera();
+      try {
+        viewfinderLabel.textContent = "Capturando...";
+        captureViewfinderFrame(video);
+        showCatOnCapture = isFirstPhoto();
+        renderCaptured();
+        if (showCatOnCapture) markFirstPhotoDone();
+        capturedIsGif = false;
+        setCaptureUI(true);
+        viewfinderLabel.textContent = "Capturada";
+        stopCamera();
+      } catch {
+        showCatOnCapture = false;
+        setCaptureUI(false);
+        viewfinderLabel.textContent = "Ao vivo";
+        showToast("Erro ao capturar");
+      }
     }
 
     function retakePhoto() {
@@ -1199,11 +1243,40 @@
 
     function savePhoto() {
       if (!capturedDataUrl) return;
-      const a = document.createElement("a");
-      a.href = capturedDataUrl;
-      a.download = capturedIsGif ? "run-foto.gif" : "run-foto.jpg";
-      a.click();
+
+      if (showCatOnCapture && catOverlayReady && !capturedIsGif) {
+        const base = new Image();
+        base.onload = () => {
+          const out = document.createElement("canvas");
+          out.width = base.width;
+          out.height = base.height;
+          const ctx = out.getContext("2d");
+          ctx.drawImage(base, 0, 0);
+          try {
+            drawCatOverlay(ctx, out.width, out.height);
+            downloadDataUrl(out.toDataURL("image/jpeg", 0.92), "run-foto.jpg");
+          } catch {
+            downloadDataUrl(capturedDataUrl, "run-foto.jpg");
+          }
+          showToast("Foto salva!");
+        };
+        base.onerror = () => {
+          downloadDataUrl(capturedDataUrl, "run-foto.jpg");
+          showToast("Foto salva!");
+        };
+        base.src = capturedDataUrl;
+        return;
+      }
+
+      downloadDataUrl(capturedDataUrl, capturedIsGif ? "run-foto.gif" : "run-foto.jpg");
       showToast(capturedIsGif ? "GIF salvo!" : "Foto salva!");
+    }
+
+    function downloadDataUrl(url, filename) {
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      a.click();
     }
 
     filterBtns.forEach(btn => {
